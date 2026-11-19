@@ -77,7 +77,7 @@ export default function SellerOrderDetail() {
       </div>
       {error && <div className="form-error">{error}</div>}
       {done && <div className="form-alert success">{done}</div>}
-      {!['DELIVERED', 'CANCELLED'].includes(order.orderStatus) && <LiveTracking orderId={id} viewer="seller" />}
+      {!['DELIVERED', 'CANCELLED'].includes(order.orderStatus) && <LiveTracking orderId={id} viewer={isAdmin ? "admin" : "seller"} onChanged={load} />}
       <div className="detail-grid">
         <section className="data-card">
           <div className="data-card-head"><div><h3>{isAdmin ? 'Order items' : 'Your items'}</h3><span>{items.length} item{items.length === 1 ? '' : 's'}</span></div><StatusPill value={order.orderStatus} /></div>

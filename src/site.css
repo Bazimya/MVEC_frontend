@@ -328,3 +328,63 @@
   .return-line { grid-template-columns: 40px 1fr; }
   .return-line select { grid-column: 1 / -1; }
 }
+
+.page-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+
+/* Advertise here. */
+.home-hero-advertise { position: absolute; top: 12px; right: 12px; z-index: 2; padding: 6px 12px; border-radius: 999px; background: var(--site-card); color: var(--site-ink); font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.ad-pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 10px 0 14px; }
+.ad-pick { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--site-line); border-radius: 12px; cursor: pointer; background: var(--site-card); position: relative; }
+.ad-pick input { position: absolute; top: 10px; left: 10px; }
+.ad-pick img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+.ad-pick.active { border-color: var(--site-brand); box-shadow: inset 0 0 0 1px var(--site-brand); }
+.ad-total { font-size: 18px; }
+
+/* Products sold by a supplier (wholesaler). */
+.bulk-flag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; color: var(--site-brand); background: var(--site-brand-soft); border: 1px solid var(--site-brand); vertical-align: middle; }
+.store-category-line { margin: 8px 0 0; display: flex; gap: 10px; align-items: baseline; }
+
+/* ---- Footer: the sign-out button reads like the links beside it ---- */
+.site-footer-bar nav .link-btn { color: inherit; font-weight: 400; font-size: 13.5px; opacity: .85; }
+.site-footer-bar nav .link-btn:hover { opacity: 1; text-decoration: underline; }
+
+/* ---- Follow your order (signed out) ---- */
+.follow-orders { max-width: 460px; margin: 0 auto; padding: 32px var(--site-gutter) 48px; display: grid; gap: 14px; }
+.follow-orders h1 { font-family: var(--site-serif); font-size: clamp(26px, 6vw, 34px); line-height: 1.1; margin: 0; }
+.follow-orders p { margin: 0; color: var(--site-muted); }
+.follow-orders-form { display: grid; gap: 12px; padding: 18px; border: 1px solid var(--site-line); border-radius: var(--site-radius); background: var(--site-card); }
+.follow-orders-form .gradient-btn { width: 100%; }
+
+/* ---- Share your location (after sign-in) ---- */
+.location-prompt { position: fixed; z-index: 60; left: 16px; right: 16px; bottom: 84px; max-width: 420px; margin-left: auto; display: grid; gap: 12px; padding: 16px; border-radius: var(--site-radius); border: 1px solid var(--site-line); background: var(--site-card); color: var(--site-ink); box-shadow: 0 12px 32px rgba(6, 40, 52, .18); }
+.location-prompt b { font-size: 15px; }
+.location-prompt p { margin: 4px 0 0; font-size: 13.5px; color: var(--site-muted); line-height: 1.45; }
+.location-prompt-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+@media (min-width: 900px) { .location-prompt { bottom: 24px; } }
+
+/* ---- Rider districts ---- */
+.district-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; padding: 0; }
+.district-chips li { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 12px; border-radius: 999px; background: var(--site-brand-soft); color: var(--site-brand-deep); font-size: 13px; font-weight: 600; }
+.district-chips button { border: 0; background: transparent; color: inherit; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 16px; line-height: 1; }
+.district-chips button:hover { background: rgba(0, 0, 0, .08); }
+
+/* ---- Rider: one parcel opened from a notification ---- */
+.offer-card { display: grid; gap: 14px; }
+.offer-facts { display: grid; gap: 10px; margin: 0; }
+.offer-facts > div { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: baseline; }
+.offer-facts dt { font-size: 12.5px; color: var(--site-muted); }
+.offer-facts dd { margin: 0; overflow-wrap: anywhere; }
+.offer-facts dd small { display: block; color: var(--site-muted); }
+.offer-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.offer-actions > button { flex: 1 1 140px; }
+@media (max-width: 420px) { .offer-facts > div { grid-template-columns: 1fr; gap: 2px; } }
+
+/* ---- Seller: parcel waiting for a rider ---- */
+.live-track-waiting { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.live-track-waiting > div { flex: 1 1 240px; }
+.live-track-waiting h3 { margin: 0 0 4px; }
+
+/* Rider offers on the board: buttons wrap under the details on phones. */
+.rider-offer-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 10px 0; flex-wrap: wrap; }
+.rider-offer-row > div:first-child { flex: 1 1 220px; min-width: 0; }
+.rider-offer-row > div:last-child { display: flex; gap: 8px; }

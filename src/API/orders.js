@@ -52,6 +52,8 @@ export const ordersApi = {
   // Seller records an order taken in person / by phone.
   createManual: (payload) =>
     client.post("/orders/vendor/manual", payload).then((r) => r.data),
+  // No Ikiguzi rider took the parcel: the seller delivers it (and keeps the fee).
+  deliverMyself: (orderId) => client.post(`/orders/vendor/${orderId}/self-deliver`).then((r) => r.data),
   updateVendorOrderStatus: (payload) =>
     client.patch("/orders/vendor/status", payload).then((r) => r.data),
   confirmDelivery: (id, deliveryOtp) => {

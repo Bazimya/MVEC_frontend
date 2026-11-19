@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import Storefront from '../components/Storefront';
 import Icon from '../components/Icon';
 import ProductImage from '../components/ProductImage';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../API/auth';
 import { addressesApi } from '../API/addresses';
+import PinPicker from '../components/PinPicker';
 import { uploadsApi } from '../API/uploads';
 import { extractErrorMessage } from '../API/client';
 import { isRwandanPhone } from '../utils/delivery';
@@ -197,6 +198,14 @@ function AddressForm({ initial, onSave, onCancel, busy }) {
         <label className="field"><span>Phone for delivery</span><input name="phone" type="tel" value={form.phone} onChange={set('phone')} placeholder="07xx xxx xxx" autoComplete="tel" /></label>
         <label className="field"><span>Delivery instructions (optional)</span><input value={form.deliveryInstructions || ''} onChange={set('deliveryInstructions')} maxLength={200} /></label>
       </div>
+      <PinPicker
+        label="Pin your door"
+        help="Riders deliver to this pin. At home now? Use your location, or tap the spot on the map."
+        allowGps
+        searchText={form.street ? [form.street, form.sector, form.cityDistrict].filter(Boolean).join(', ') : ''}
+        value={form.lat != null && form.lat !== '' ? { lat: Number(form.lat), lng: Number(form.lng) } : null}
+        onChange={(pin) => setForm((f) => ({ ...f, lat: pin ? pin.lat : null, lng: pin ? pin.lng : null }))}
+      />
       <label className="filter-check"><input type="checkbox" checked={Boolean(form.isDefaultShipping)} onChange={set('isDefaultShipping')} /> Use as my default delivery address</label>
       <div className="address-actions">
         <button type="submit" className="gradient-btn" disabled={busy}>{busy ? 'Saving…' : 'Save address'}</button>
@@ -277,11 +286,15 @@ function Addresses() {
 export const PORTAL_PROFILE = { vendor: '/vendor/profile', super_admin: '/admin/profile', supplier: '/supplier/profile', affiliate: '/affiliate/profile', delivery: '/delivery/profile' };
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const portal = PORTAL_PROFILE[user?.role];
   if (portal) return <Navigate to={`${portal}${window.location.hash}`} replace />;
   return <Storefront><main className="account-page">
-    <div className="page-title"><span className="eyebrow">MY ACCOUNT</span><h1>Profile &amp; addresses</h1><p>Manage your account details, delivery addresses and password.</p></div>
+    <div className="page-title page-title-row">
+      <div><span className="eyebrow">MY ACCOUNT</span><h1>Profile &amp; addresses</h1><p>Manage your account details, delivery addresses and password.</p></div>
+      <button type="button" className="outline-btn" onClick={() => { logout(); navigate('/'); }}>Sign out</button>
+    </div>
     <div className="profile-grid">
       <div>
         <AccountDetails />

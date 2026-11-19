@@ -1,4 +1,7 @@
 import { Link } from "react-router-dom";
+import { authApi } from "../API/auth";
+import { useAuth } from "../context/AuthContext";
+import { isRwandanPhone } from "../utils/delivery";
 import { useEffect, useMemo, useState } from "react";
 import Pagination from "../components/Pagination";
 import Storefront from "../components/Storefront";
@@ -8,6 +11,68 @@ import { money, formatDate } from "../utils/format";
 import { buyerStatus, canCancel, countdown, isAwaitingPayment, paidCancelRemaining } from "../utils/orders";
 
 const PER_PAGE = 8;
+
+/**
+ * Signed out: follow an order with the phone it was placed with. A text code
+ * proves the phone (guests and regular buyers alike), then the orders show.
+ */
+export function FollowOrders() {
+  const { startSession } = useAuth();
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+
+  const send = async (e) => {
+    e.preventDefault();
+    if (!isRwandanPhone(phone)) { setError("Enter the phone number you ordered with (07…)."); return; }
+    setBusy(true); setError("");
+    try { const r = await authApi.guestSendCode(phone.trim()); setSent(true); setNote(r.message || "We sent you a 6-digit code."); }
+    catch (err) { setError(extractErrorMessage(err)); }
+    finally { setBusy(false); }
+  };
+  const verify = async (e) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(code.trim())) { setError("Enter the 6-digit code."); return; }
+    setBusy(true); setError("");
+    try { startSession(await authApi.guestVerify({ phone: phone.trim(), code: code.trim(), track: true })); }
+    catch (err) { setError(extractErrorMessage(err)); setBusy(false); }
+  };
+
+  return (
+    <Storefront>
+      <section className="follow-orders">
+        <span className="eyebrow">MY ORDERS</span>
+        <h1>Follow your order</h1>
+        <p>Enter the phone number you ordered with. We'll text you a code, then show your orders and where each parcel is.</p>
+        {error && <div className="form-error" role="alert">{error}</div>}
+        {!sent ? (
+          <form onSubmit={send} className="follow-orders-form">
+            <label className="field"><span>Phone number</span><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07xx xxx xxx" required /></label>
+            <button type="submit" className="gradient-btn" disabled={busy}>{busy ? "Sending…" : "Text me a code"}</button>
+          </form>
+        ) : (
+          <form onSubmit={verify} className="follow-orders-form">
+            {note && <p className="tiny">{note}</p>}
+            <label className="field"><span>6-digit code</span><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} required /></label>
+            <button type="submit" className="gradient-btn" disabled={busy}>{busy ? "Checking…" : "Show my orders"}</button>
+            <button type="button" className="text-btn" onClick={() => { setSent(false); setCode(""); setNote(""); }}>Use another number</button>
+          </form>
+        )}
+        <p className="tiny">Have a password? <Link to="/login" state={{ from: "/orders" }}>Sign in</Link> instead.</p>
+      </section>
+    </Storefront>
+  );
+}
+
+/** /orders and /orders/:id: the page, or the phone check when signed out. */
+export function OrdersGate({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <Storefront><div className="loading-screen">Loading…</div></Storefront>;
+  return user ? (children || <Orders />) : <FollowOrders />;
+}
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);

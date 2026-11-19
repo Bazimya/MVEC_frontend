@@ -8,6 +8,8 @@ export const riderApi = {
   register: (payload) => client.post("/rider/register", payload).then((r) => mapAuthResponse(r.data)),
   me: () => client.get("/rider/me").then(data),
   stats: () => client.get("/rider/stats").then(data),
+  // The district the rider works in.
+  setArea: (districts) => client.patch("/rider/area", { districts }).then(data),
   setOnline: (isOnline) => client.patch("/rider/availability", { isOnline }).then(data),
   // A GPS fix: { lat, lng, heading?, speedMps?, accuracyM? }.
   sendLocation: (fix) => client.patch("/rider/location", fix).then(data),
@@ -16,6 +18,8 @@ export const riderApi = {
   // Buyers, sellers and admins: the riders carrying an order's parcels.
   orderLive: (orderId) => client.get(`/orders/${orderId}/live`).then(data),
   available: () => client.get("/rider/deliveries/available").then(data),
+  // One parcel, as its notification opens it: { delivery, mine, canTake, online }.
+  offer: (id) => client.get(`/rider/deliveries/${id}`).then(data),
   active: () => client.get("/rider/deliveries/active").then(data),
   history: () => client.get("/rider/deliveries/history").then(data),
   accept: (id) => client.post(`/rider/deliveries/${id}/accept`).then(data),

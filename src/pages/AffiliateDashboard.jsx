@@ -5,6 +5,7 @@ import Icon from "../components/Icon";
 import Pagination from "../components/Pagination";
 import SmartTable from "../components/SmartTable";
 import { useAuth } from "../context/AuthContext";
+import AutoPayoutCard from "../components/AutoPayoutCard";
 import { affiliatesApi } from "../API/affiliates";
 import { authApi } from "../API/auth";
 import { extractErrorMessage } from "../API/client";
@@ -402,6 +403,7 @@ function Wallet() {
 }
 
 function Withdrawals() {
+  const { user } = useAuth();
   const [wallet, setWallet] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -464,6 +466,7 @@ function Withdrawals() {
 
   return <>
     <div className="dash-page-head"><div><span className="eyebrow">AFFILIATE PAYOUTS</span><h1>Withdrawals</h1><p>Request a payout and track the status of previous withdrawal requests.</p></div><Link className="outline-btn" to="/affiliate/wallet">View wallet</Link></div>
+    <AutoPayoutCard defaultName={user?.Fullname || ""} defaultPhone={user?.phone || ""} onSaved={load} />
     <div className="wallet-grid">
       <div className="data-card"><h3>Request a withdrawal</h3>
         <p className="tiny">Available balance: <b>{loading ? "…" : money(wallet?.availableBalance)}</b>. Minimum withdrawal is RWF 10,000.</p>

@@ -143,6 +143,7 @@ export default function Storefront({ children }) {
           <Link to="/vendors">Stores</Link>
           <Link to="/orders">Orders</Link>
           <Link to="/account/returns">Returns</Link>
+          {user && <button type="button" className="link-btn" onClick={() => { logout(); navigate('/'); }}>Sign out</button>}
           <Link to="/buyer/support">{t('help')}</Link>
           {dashboard ? <Link to={dashboard}>Dashboard</Link> : <Link to="/signup" state={{ role: 'vendor' }}>{t('becomeVendor')}</Link>}
         </nav>

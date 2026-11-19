@@ -12,7 +12,7 @@ import { money, ratingLabel } from "../utils/format";
 
 const BEST_SELLERS = 8;
 const NEW_ARRIVALS = 4;
-const SLIDE_MS = 6000;
+const SLIDE_MS = 3000; // the hero changes product every 3 seconds
 
 function SkeletonGrid({ count = 4 }) {
   return (
@@ -32,7 +32,7 @@ function SectionHead({ title, to, label = "View all" }) {
 }
 
 /** The hero: sponsored products take turns; with none live, a stand-in photo offers the space. */
-function Hero({ slides, advertiseLink, sellerHome, signedIn }) {
+function Hero({ slides, advertiseLink, sellerHome }) {
   const [index, setIndex] = useState(0);
   const count = slides.length;
   useEffect(() => {
@@ -67,13 +67,14 @@ function Hero({ slides, advertiseLink, sellerHome, signedIn }) {
         ) : (
           <div className="home-hero-slide">
             <img src="/hero-standin.jpg" alt="Shopping bags" loading="eager" />
-            <Link to={advertiseLink} state={signedIn ? undefined : { role: "vendor" }} className="home-hero-tag">
+            <Link to={advertiseLink} className="home-hero-tag">
               <small>Your products here</small>
               <b>Advertise on Ikiguzi</b>
               <span>Get started <Icon name="arrow" size={14} /></span>
             </Link>
           </div>
         )}
+        {current && <Link to={advertiseLink} className="home-hero-advertise">Advertise here</Link>}
         {count > 1 && (
           <>
             <button type="button" className="home-hero-arrow prev" onClick={() => setIndex((index - 1 + count) % count)} aria-label="Previous"><Icon name="left" /></button>
@@ -138,15 +139,14 @@ export default function Home() {
     .slice(0, 8);
   const dealImage = (deals[0] || products[0])?.image;
   const sellImage = (products[1] || products[0])?.image;
-  // Vendors go straight to campaigns; guests sign up as a vendor; anyone
-  // else signed in can ask Ikiguzi support about advertising.
-  const advertiseLink = user?.role === "vendor" ? "/vendor/advertisements" : user ? "/buyer/support" : "/signup";
+  // One page for everyone: it signs people in, explains who can advertise, or books the ad.
+  const advertiseLink = "/advertise";
   const sellerHome = { vendor: "/vendor", supplier: "/supplier", affiliate: "/affiliate", super_admin: "/admin" }[user?.role];
 
   return (
     <Storefront>
       <main className="home">
-        <Hero slides={heroAds.slice(0, 6)} advertiseLink={advertiseLink} sellerHome={sellerHome} signedIn={Boolean(user)} />
+        <Hero slides={heroAds.slice(0, 6)} advertiseLink={advertiseLink} sellerHome={sellerHome} />
 
         {status === "error" && (
           <div className="form-alert error" role="alert">

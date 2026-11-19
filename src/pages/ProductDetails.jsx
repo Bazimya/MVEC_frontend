@@ -123,7 +123,7 @@ export default function ProductDetails() {
         </p>
         <StockAlerts productId={p.id} soldOut={soldOut} signedIn={Boolean(user)} onSignIn={() => navigate('/login', { state: { from: `${location.pathname}${location.search}` } })} />
         {p.description && <p>{p.description}</p>}
-        <div className="vendor-line"><div className="vendor-avatar" aria-hidden="true">{(p.vendor || 'M')[0]}</div><div><small>Sold by</small><span>{p.vendor}</span><SellerBadges badges={p.sellerBadges} /></div></div>
+        <div className="vendor-line"><div className="vendor-avatar" aria-hidden="true">{(p.vendor || 'M')[0]}</div><div><small>Sold by</small><span>{p.vendor}</span>{p.bulkSeller && <span className="bulk-flag">Supplier · sells in bulk</span>}<SellerBadges badges={p.sellerBadges} /></div></div>
         <div className="attributes">{Object.entries(p.attributes || {}).filter(([, v]) => v).map(([k, v]) => <div key={k}><small>{k}</small><b>{v}</b></div>)}</div>
         {!user && <div className="guest-shopping-note">✓ You can browse and add to cart without an account. You&apos;ll sign in at checkout.</div>}
         {feedback && <div className={`form-alert ${feedback.ok ? 'success' : 'error'}`} role="status">{feedback.message}{feedback.ok && (feedback.compare ? <> <Link to="/buyer/compare">Open compare</Link></> : <> <Link to="/cart">View cart</Link></>)}</div>}

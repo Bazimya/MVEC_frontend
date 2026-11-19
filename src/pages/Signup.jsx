@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { extractErrorMessage } from "../API/client";
 import { authApi } from "../API/auth";
 import { riderApi } from "../API/rider";
+import DistrictsPicker from "../components/DistrictsPicker";
 import { isRwandanPhone } from "../utils/delivery";
 import { afterSignIn, safeRedirect } from "../utils/redirect";
 
@@ -29,8 +30,9 @@ export default function Signup() {
     confirmPassword: "",
     vehicleType: "MOTORBIKE",
     plateNumber: "",
+    districts: [],
   });
-  // Delivery workers have no password: a code to their phone proves it instead.
+  // Delivery workers prove their phone with a code, and choose a password to sign in with later.
   const [riderCode, setRiderCode] = useState(null); // { code, sentTo }
   const isRider = form.role === "delivery";
   const [error, setError] = useState(""),
@@ -54,7 +56,6 @@ export default function Signup() {
       setError("Enter a valid email address or leave it empty.");
       return;
     }
-    if (isRider) return riderSignup();
     if (["vendor", "supplier"].includes(form.role) && !form.companyName.trim()) {
       setError("Please enter your business name.");
       return;
@@ -67,6 +68,7 @@ export default function Signup() {
       setError("Passwords do not match");
       return;
     }
+    if (isRider) return riderSignup();
     setLoading(true);
     try {
       const { confirmPassword: _, ...payload } = form;
@@ -81,6 +83,10 @@ export default function Signup() {
   }
   // Riders: send a code, then check it and create the account (it waits for admin approval).
   async function riderSignup() {
+    if (!form.districts.length) {
+      setError("Choose at least one district you deliver in.");
+      return;
+    }
     if (needsPlate(form.vehicleType) && form.plateNumber.trim().length < 4) {
       setError("Enter your plate number.");
       return;
@@ -103,6 +109,8 @@ export default function Signup() {
         email: form.email.trim() || undefined,
         vehicleType: form.vehicleType,
         plateNumber: needsPlate(form.vehicleType) ? form.plateNumber.trim() : undefined,
+        districts: form.districts,
+        password: form.password,
       });
       startSession(session);
       navigate("/delivery", { replace: true });
@@ -146,7 +154,7 @@ export default function Signup() {
     ],
     delivery: [
       "Delivery worker",
-      "Carry parcels from sellers to buyers and earn the delivery fee. Ikiguzi checks your details before your first job, and you sign in with a code sent to your phone.",
+      "Carry parcels from sellers to buyers and earn the delivery fee. Ikiguzi checks your details before your first job. You sign in with your phone number and password.",
     ],
   };
   return (
@@ -230,6 +238,7 @@ export default function Signup() {
             {needsPlate(form.vehicleType) && (
               <FormField label="Plate number" name="plateNumber" placeholder="RAB 123 A" value={form.plateNumber} onChange={update} maxLength={20} />
             )}
+            <DistrictsPicker value={form.districts} onChange={(districts) => setForm((f) => ({ ...f, districts }))} />
           </div>
         )}
         {isRider && riderCode && (
@@ -245,7 +254,7 @@ export default function Signup() {
             {riderCode.sentTo && <p className="tiny" role="status">{riderCode.sentTo}</p>}
           </>
         )}
-        {!isRider && <div className="two-col">
+        {(!isRider || !riderCode) && <div className="two-col">
           <FormField
             label="Create password"
             name="password"

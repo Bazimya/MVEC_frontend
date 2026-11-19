@@ -31,6 +31,7 @@ export default function RidersAdmin() {
   const columns = [
     { key: 'name', label: 'Rider', render: r => <div><b>{r.name}</b><small className="tiny seller-block">{r.phone}</small></div> },
     { key: 'vehicleType', label: 'Vehicle', render: r => `${VEHICLE[r.vehicleType] || r.vehicleType}${r.plateNumber ? ` · ${r.plateNumber}` : ''}` },
+    { key: 'district', label: 'Districts', render: r => (r.districts?.length ? r.districts.join(', ') : r.district) || '—' },
     { key: 'isOnline', label: 'Now', render: r => (r.isOnline ? 'Online' : 'Offline') },
     { key: 'status', label: 'Status', render: r => <StatusPill value={r.status} /> },
   ];

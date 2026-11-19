@@ -9,6 +9,7 @@ import PinPicker from '../../components/PinPicker';
 import { PageHead, Loading, EmptyState, StatusPill, dateDMY, useNotice } from './shared';
 import { useLoader } from '../../lib/useLoader';
 import { resolveImageUrl } from '../../utils/imageUrl';
+import { useAuth } from '../../context/AuthContext';
 
 const EMPTY = { storeName: '', businessCategory: '', description: '', contactEmail: '', contactPhone: '', city: '', businessAddress: '', logo: '', pickup: null, riderDelivery: false };
 
@@ -39,7 +40,10 @@ const VENDOR_COPY = {
 const VENDOR_API = { list: storesApi.getMyStores, create: storesApi.create, update: storesApi.updateById, setPrimary: storesApi.setPrimary, remove: storesApi.remove };
 
 function StoreFormModal({ store, api, copy, onClose, onSaved }) {
-  const [form, setForm] = useState(() => (store ? fromStore(store) : { ...EMPTY }));
+  // The business category was asked at sign-up: a new store starts with it.
+  const { user } = useAuth();
+  const [form, setForm] = useState(() => (store ? fromStore(store) : { ...EMPTY, businessCategory: user?.category || '' }));
+  const [changeCategory, setChangeCategory] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -89,7 +93,9 @@ function StoreFormModal({ store, api, copy, onClose, onSaved }) {
         </label>
         <div className="seller-store-name seller-form-grid">
           <label className="field"><span>Store name *</span><input name="storeName" value={form.storeName} onChange={update} required placeholder={copy.placeholder} /></label>
-          <CategorySelect className="field half" valueKey="name" label="Business category" name="businessCategory" value={form.businessCategory} onChange={value => setForm(f => ({ ...f, businessCategory: value }))} />
+          {form.businessCategory && !changeCategory
+            ? <div className="field half"><span>Business category</span><p className="store-category-line"><b>{form.businessCategory}</b> <button type="button" className="link-btn" onClick={() => setChangeCategory(true)}>Change</button></p></div>
+            : <CategorySelect className="field half" valueKey="name" label="Business category" name="businessCategory" value={form.businessCategory} onChange={value => setForm(f => ({ ...f, businessCategory: value }))} />}
           <label className="field half"><span>City</span><input name="city" value={form.city} onChange={update} placeholder="Kigali" /></label>
         </div>
       </div>
@@ -98,18 +104,20 @@ function StoreFormModal({ store, api, copy, onClose, onSaved }) {
         <label className="field half"><span>Contact email *</span><input type="email" name="contactEmail" value={form.contactEmail} onChange={update} required /></label>
         <label className="field half"><span>Contact phone *</span><input name="contactPhone" value={form.contactPhone} onChange={update} required placeholder="07xx xxx xxx" /></label>
         <label className="field"><span>Business address</span><input name="businessAddress" value={form.businessAddress} onChange={update} placeholder="Street, building" /></label>
-        {api === VENDOR_API && <>
+        <>
           <PinPicker
             label="Pickup pin"
-            help="Where Ikiguzi riders collect your parcels. Tap the exact spot of the store on the map."
+            help="Where Ikiguzi riders collect your parcels. At the store now? Use your location. Otherwise tap the exact spot on the map."
+            allowGps
+            searchText={form.businessAddress ? [form.businessAddress, form.city].filter(Boolean).join(', ') : ''}
             value={form.pickup}
-            onChange={pickup => setForm(f => ({ ...f, pickup, riderDelivery: pickup ? f.riderDelivery : false }))}
+            onChange={pickup => setForm(f => ({ ...f, pickup, riderDelivery: pickup ? (f.pickup ? f.riderDelivery : true) : false }))}
           />
           <label className="field check-field">
             <input type="checkbox" checked={form.riderDelivery} disabled={!form.pickup} onChange={e => setForm(f => ({ ...f, riderDelivery: e.target.checked }))} />
             <span>Deliver with Ikiguzi riders: buyers pay a fee by distance, and the nearest rider collects each parcel. Your own delivery zones still apply beyond 30 km.</span>
           </label>
-        </>}
+        </>
       </div>
       <div className="modal-actions">
         <button type="button" className="outline-btn" onClick={onClose}>Cancel</button>

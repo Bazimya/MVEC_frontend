@@ -10,6 +10,7 @@ import Pagination from '../components/Pagination';
 import ProductImage from '../components/ProductImage';
 import useUrlQuery from '../components/useUrlQuery';
 import { UnitSelect } from '../components/CategorySelect';
+import { useAuth } from '../context/AuthContext';
 import { suppliersApi } from '../API/suppliers';
 import { categoriesApi } from '../API/categories';
 import { uploadsApi } from '../API/uploads';
@@ -24,8 +25,10 @@ const onMarketplace = p => p.retailProduct && typeof p.retailProduct === 'object
 const unitPrice = f => Math.round((Number(f.wholesalePrice) || 0) * (1 - (Number(f.bulkDiscount) || 0) / 100));
 
 function ProductForm({ product, stores = [], onSave, onCancel, saving }) {
+  // New products start in the category chosen at sign-up (asked once).
+  const { user } = useAuth();
   const [form, setForm] = useState(() => {
-    if (!product) return { ...emptyProduct, storeId: idOf(stores.find(s => s.isPrimary)) };
+    if (!product) return { ...emptyProduct, category: user?.category || '', storeId: idOf(stores.find(s => s.isPrimary)) };
     const gallery = product.media?.gallery?.length ? product.media.gallery : product.media?.mainImage ? [product.media.mainImage] : [];
     return { ...emptyProduct, ...product, storeId: idOf(product.store) || idOf(stores.find(s => s.isPrimary)), gallery, mainImage: product.media?.mainImage || gallery[0] || '' };
   });

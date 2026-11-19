@@ -52,6 +52,8 @@ export function mapBackendProduct(p) {
     variants: Array.isArray(p.variants) ? p.variants.map((v) => ({ ...v, image: v.image ? resolveImageUrl(v.image) : '' })) : [],
     variantOptions: Array.isArray(p.variantOptions) ? p.variantOptions : [],
     sellerBadges: Array.isArray(p.sellerBadges) ? p.sellerBadges : [],
+    // Sold by a supplier (wholesaler): shown as "Supplier · bulk orders".
+    bulkSeller: Boolean(p.bulkSeller),
     attributes: {
       Color: productAttributes.color || p.color || '',
       Size: productAttributes.size || p.size || '',

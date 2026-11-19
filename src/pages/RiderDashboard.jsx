@@ -7,6 +7,8 @@ import { extractErrorMessage } from "../API/client";
 import { PageHead, Metric, Loading, EmptyState, StatusPill, money, dateDMY } from "./seller/shared";
 import LiveMap from "../components/LiveMap";
 import { parcelPoints, minutesLeft, kmLeft } from "../utils/liveTracking";
+import AutoPayoutCard from "../components/AutoPayoutCard";
+import DistrictsPicker from "../components/DistrictsPicker";
 
 const BOARD = ["rider", "board"];
 const STEP_LABEL = { PICKED_UP: "I have the parcel", OUT_FOR_DELIVERY: "Start the delivery" };
@@ -56,6 +58,29 @@ function Approval({ rider }) {
   return <div className="verified-box"><b>{rider.status === "PENDING" ? "Waiting for approval" : "Your rider account"}</b> <StatusPill value={rider.status} /><p>{text}</p></div>;
 }
 
+/** The district the rider works in (Rwanda's 30). */
+function DistrictCard({ rider, refresh }) {
+  const saved = rider.districts?.length ? rider.districts : rider.district ? [rider.district] : [];
+  const [districts, setDistricts] = useState(saved);
+  const [note, setNote] = useState(null);
+  const changed = districts.join("|") !== saved.join("|");
+  const save = async () => {
+    setNote(null);
+    try { const r = await riderApi.setArea(districts); setNote({ ok: true, text: r.message }); await refresh(); }
+    catch (err) { setNote({ ok: false, text: extractErrorMessage(err) }); }
+  };
+  return (
+    <div className="data-card">
+      <div className="data-card-head"><div><h3>Where you deliver</h3><span>{saved.length ? `${saved.join(", ")}.` : "Choose the districts you work in."} You're told about parcels waiting there, and offers also come by your live location.</span></div></div>
+      {note && <div className={note.ok ? "form-alert success" : "form-error"}>{note.text}</div>}
+      <DistrictsPicker value={districts} onChange={setDistricts} />
+      <div className="row-actions">
+        <button type="button" className="gradient-btn" disabled={!districts.length || !changed} onClick={save}>Save districts</button>
+      </div>
+    </div>
+  );
+}
+
 function Home({ board, refresh }) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState("");
@@ -86,13 +111,13 @@ function Home({ board, refresh }) {
             <div className="data-card-head"><div><h3>Offers near you</h3><span>The first rider to accept gets the parcel.</span></div></div>
             {!offers.length && <EmptyState title="No parcels right now" text="Stay online: new offers appear here." />}
             {offers.map((o) => (
-              <div key={o.id} className="list-row" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", padding: "10px 0" }}>
+              <div key={o.id} className="list-row rider-offer-row">
                 <div>
-                  <b>{o.pickup.name}</b> · <b>{money(o.fee)}</b>{o.waitingForSeller && <span className="rider-tag">Seller still preparing it</span>}
+                  <b><a href={`/delivery/offers/${o.id}`} onClick={(e) => { e.preventDefault(); navigate(`/delivery/offers/${o.id}`); }}>{o.pickup.name}</a></b> · <b>{money(o.fee)}</b>{o.waitingForSeller && <span className="rider-tag">Seller still preparing it</span>}
                   <p className="tiny">{[o.distanceToPickupKm != null && `${o.distanceToPickupKm} km from you`, `${o.distanceKm} km trip`, o.dropoff.address && `to ${o.dropoff.address}`].filter(Boolean).join(" · ")}</p>
                   <p className="tiny">{o.items.map((i) => `${i.quantity} × ${i.name}`).join(", ")}</p>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div>
                   <button type="button" className="outline-btn" disabled={!!busy} onClick={() => run(`no-${o.id}`, () => riderApi.decline(o.id))}>Decline</button>
                   <button type="button" className="gradient-btn" disabled={!!busy} onClick={() => run(`yes-${o.id}`, async () => { await riderApi.accept(o.id); navigate("/delivery/trip"); })}>Accept</button>
                 </div>
@@ -100,6 +125,71 @@ function Home({ board, refresh }) {
             ))}
           </div>}
       </>}
+      <DistrictCard rider={rider} refresh={refresh} />
+    </>
+  );
+}
+
+/** One parcel, opened from its notification: details, then accept or decline. */
+function Offer({ id, board, refresh }) {
+  const navigate = useNavigate();
+  const { data, error, isPending, refetch } = useQuery({ queryKey: ["rider", "offer", id], queryFn: () => riderApi.offer(id), refetchInterval: 10_000, retry: false });
+  const [busy, setBusy] = useState("");
+  const [failed, setFailed] = useState("");
+  const run = async (key, fn) => {
+    setBusy(key); setFailed("");
+    try { await fn(); await refresh(); await refetch(); } catch (err) { setFailed(extractErrorMessage(err)); } finally { setBusy(""); }
+  };
+  if (isPending) return <Loading />;
+  if (error) {
+    return (
+      <>
+        <PageHead eyebrow="DELIVERY" title="This parcel isn't available" />
+        <div className="data-card">
+          <p>{extractErrorMessage(error)}</p>
+          <button type="button" className="gradient-btn" onClick={() => navigate("/delivery")}>See parcels near you</button>
+        </div>
+      </>
+    );
+  }
+  const { delivery: o, mine, canTake, online } = data;
+  if (mine) {
+    return (
+      <>
+        <PageHead eyebrow="DELIVERY" title={`Your delivery · ${o.orderNumber}`} desc={o.statusLabel} />
+        <div className="data-card"><button type="button" className="gradient-btn" onClick={() => navigate("/delivery/trip")}>Open the trip</button></div>
+      </>
+    );
+  }
+  const busyElsewhere = Boolean(board?.active);
+  const maps = `https://www.google.com/maps/search/?api=1&query=${o.pickup.lat},${o.pickup.lng}`;
+  return (
+    <>
+      <PageHead eyebrow="NEW DELIVERY" title={`${o.pickup.name} · ${money(o.fee)}`} desc="The first rider to accept gets the parcel." />
+      {failed && <div className="form-error">{failed}</div>}
+      <div className="data-card offer-card">
+        <dl className="offer-facts">
+          <div><dt>Pick up at</dt><dd>{o.pickup.name}{o.pickup.address && <small>{o.pickup.address}</small>}</dd></div>
+          <div><dt>Deliver to</dt><dd>{o.dropoff.address || "Shown once you accept"}</dd></div>
+          <div><dt>Distance</dt><dd>{[o.distanceToPickupKm != null && `${o.distanceToPickupKm} km to the store`, `${o.distanceKm} km trip`].filter(Boolean).join(" · ")}</dd></div>
+          <div><dt>You earn</dt><dd><b>{money(o.fee)}</b></dd></div>
+          {o.items.length > 0 && <div><dt>Parcel</dt><dd>{o.items.map((i) => `${i.quantity} × ${i.name}`).join(", ")}</dd></div>}
+        </dl>
+        {o.waitingForSeller && <p className="tiny"><span className="rider-tag">Seller still preparing it</span> You can head over now; you'll get a message when it's ready.</p>}
+        <a className="text-btn" href={maps} target="_blank" rel="noreferrer">Open the store in maps</a>
+        <div className="offer-actions">
+          {busyElsewhere
+            ? <p className="tiny">Finish your current delivery before taking another.</p>
+            : !online
+              ? <button type="button" className="gradient-btn" disabled={!!busy} onClick={() => run("online", () => riderApi.setOnline(true))}>{busy === "online" ? "Going online…" : "Go online to take it"}</button>
+              : <>
+                <button type="button" className="outline-btn" disabled={!!busy} onClick={() => run("no", async () => { await riderApi.decline(o.id); navigate("/delivery"); })}>Decline</button>
+                <button type="button" className="gradient-btn" disabled={!!busy || !canTake} onClick={() => run("yes", async () => { await riderApi.accept(o.id); navigate("/delivery/trip"); })}>{busy === "yes" ? "Accepting…" : "Accept"}</button>
+              </>}
+        </div>
+        {online && !canTake && !busyElsewhere && <p className="tiny">This parcel is too far from where you are now.</p>}
+      </div>
+      <Progress job={o} />
     </>
   );
 }
@@ -201,6 +291,7 @@ function Earnings({ board }) {
         <Metric icon="wallet" label="Available" value={money(wallet.available)} />
         <Metric icon="chart" label="Earned in total" value={money(wallet.totalEarned)} sub={`${money(wallet.totalWithdrawn)} withdrawn`} />
       </div>
+      <AutoPayoutCard defaultName={board.rider.name || ""} defaultPhone={board.rider.phone || ""} onSaved={() => queryClient.invalidateQueries({ queryKey: ["rider", "earnings"] })} />
       <form className="data-card" onSubmit={submit}>
         <h3>Withdraw to mobile money</h3>
         {notice && <div className={notice.ok ? "form-alert success" : "form-error"}>{notice.text}</div>}
@@ -224,6 +315,7 @@ export default function RiderDashboard() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: BOARD });
   const page = isPending ? <Loading />
     : error ? <div className="form-error">{extractErrorMessage(error)}</div>
+    : path.startsWith("/delivery/offers/") ? <Offer id={path.split("/")[3]} board={board} refresh={refresh} />
     : path.startsWith("/delivery/trip") ? <Trip board={board} refresh={refresh} />
     : path.startsWith("/delivery/earnings") ? <Earnings board={board} />
     : <Home board={board} refresh={refresh} />;

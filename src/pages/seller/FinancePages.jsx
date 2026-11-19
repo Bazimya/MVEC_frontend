@@ -6,6 +6,8 @@ import SmartTable from '../../components/SmartTable';
 import { payoutsApi } from '../../API/payouts';
 import { PageHead, Loading, Metric, StatusPill, money, dateDMY, titleCase, toInputDate, useNotice } from './shared';
 import { useLoader } from '../../lib/useLoader';
+import AutoPayoutCard from '../../components/AutoPayoutCard';
+import { useAuth } from '../../context/AuthContext';
 
 export const momoProvider = n => {
   const d = String(n || '').replace(/\D/g, '').replace(/^250/, '0');
@@ -23,6 +25,7 @@ const PAYOUT_STEP = {
 };
 
 export function PayoutsPage() {
+  const { user } = useAuth();
   const { data, loading, error, reload } = useLoader(['vendor', 'payouts'], () => Promise.all([payoutsApi.getBalance(), payoutsApi.getHistory()])
     .then(([b, h]) => ({ summary: b.summary || {}, commissionRate: b.commissionRate, payouts: h.payouts || [] })));
   const notice = useNotice();
@@ -87,6 +90,7 @@ export function PayoutsPage() {
       </div>
       {s.frozen > 0 && <div className="form-alert">{money(s.frozen)} from {s.frozenOrders} order{s.frozenOrders === 1 ? '' : 's'} is on hold because of an open dispute. <Link to="/vendor/orders">See orders</Link></div>}
 
+      <AutoPayoutCard defaultName={user?.businessName || user?.Fullname || ''} defaultPhone={user?.phone || ''} onSaved={reload} />
       <div className="dash-grid">
         <div className="data-card">
           <h3>Request payout</h3>

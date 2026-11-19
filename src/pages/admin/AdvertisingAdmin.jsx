@@ -7,6 +7,7 @@ import SmartTable from '../../components/SmartTable';
 import { adsAdminApi } from '../../API/vendorServices';
 import { PageHead, Loading, Metric, StatusPill, money, useNotice } from '../seller/shared';
 import { useLoader } from '../../lib/useLoader';
+import AdBookingsReview from '../../components/AdBookingsReview';
 
 const TABS = [['PENDING', 'To review'], ['ACTIVE', 'Live'], ['PAUSED', 'Paused'], ['COMPLETED', 'Ended'], ['REJECTED', 'Rejected'], ['ALL', 'All']];
 
@@ -55,6 +56,7 @@ export default function AdvertisingAdmin() {
   return <DashboardLayout admin>
     <PageHead eyebrow="ADMIN CONTROL" title="Advertising" desc={`Review seller campaigns. Budgets are prepaid from seller balances; each click costs ${money(ads[0]?.costPerClick || 100)}.`} />
     {notice.banner}
+    <AdBookingsReview />
     {loading && !data && <Loading />}
     {error && <div className="form-error">{error}</div>}
     {data && <>

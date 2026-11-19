@@ -5,6 +5,7 @@ import ProductImage from "../ProductImage";
 import { categoriesApi } from "../../API/categories";
 import { uploadsApi } from "../../API/uploads";
 import { extractErrorMessage } from "../../API/client";
+import { useAuth } from "../../context/AuthContext";
 import { VariantEditor, DealEditor, variantStateFrom, variantPayload, dealStateFrom, dealPayload } from "./VariantDealEditor";
 
 let idCounter = 0;
@@ -144,12 +145,23 @@ export default function ProductFormModal({ product, onSave, onClose, saving = fa
   const variantStock = variantState.rows.reduce((n, r) => n + (Number(r.stock) || 0), 0);
   const blobUrls = useRef(new Set());
 
+  // A new product starts in the business category chosen at sign-up, so
+  // sellers are not asked for it again (they can still pick another).
+  const { user } = useAuth();
+  const businessCategory = String(user?.category || "").trim().toLowerCase();
   useEffect(() => {
     categoriesApi
       .getAll()
-      .then((res) => setCategories((res.categories || []).map(withCategoryId)))
+      .then((res) => {
+        const list = (res.categories || []).map(withCategoryId);
+        setCategories(list);
+        if (!product && businessCategory) {
+          const match = list.find((c) => c.id && String(c.name || "").trim().toLowerCase() === businessCategory);
+          if (match) setForm((current) => (current.categoryId ? current : { ...current, categoryId: match.id }));
+        }
+      })
       .catch(() => {});
-  }, []);
+  }, [product, businessCategory]);
 
   useEffect(() => {
     const onKeyDown = (event) => {

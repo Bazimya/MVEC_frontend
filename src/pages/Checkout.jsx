@@ -11,6 +11,7 @@ import { ordersApi } from "../API/orders";
 import { addressesApi } from "../API/addresses";
 import { shippingApi } from "../API/shipping";
 import PinPicker from "../components/PinPicker";
+import { lastPin } from "../API/geo";
 import { promotionsApi } from "../API/promotions";
 import { RWANDA_LOCATIONS, PROVINCES } from "../data/rwandaLocations";
 import { extractErrorMessage } from "../API/client";
@@ -73,7 +74,8 @@ export default function Checkout() {
   const [loadingProduct, setLoadingProduct] = useState(Boolean(pid));
   const [productError, setProductError] = useState("");
 
-  const [form, setForm] = useState(() => ({ ...EMPTY_FORM, ...(readSavedForm() || {}) }));
+  // Starts at the position this browser last shared (asked at sign-in), if any.
+  const [form, setForm] = useState(() => { const saved = { ...EMPTY_FORM, ...(readSavedForm() || {}) }; return { ...saved, pin: saved.pin || lastPin() }; });
   const [addresses, setAddresses] = useState([]);
   const [addressId, setAddressId] = useState("");
   const [saveAddress, setSaveAddress] = useState(false);
@@ -433,6 +435,7 @@ export default function Checkout() {
               label="Pin your door (recommended)"
               help="Stores using Ikiguzi riders deliver to this pin, often the same day, priced by distance."
               allowGps
+              searchText={form.street ? [form.street, form.sector, form.district].filter(Boolean).join(", ") : ""}
               value={form.pin}
               onChange={(pin) => { setForm((f) => ({ ...f, pin })); setAddressId(""); }}
             />

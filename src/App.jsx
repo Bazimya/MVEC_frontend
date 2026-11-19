@@ -8,9 +8,11 @@ import NotificationPanel from "./components/NotificationPanel";
 import MobileBottomNav from "./components/MobileBottomNav";
 import AffiliateRedirect from "./components/AffiliateRedirect";
 import { ReferralCapture } from "./services/referral";
+import LocationPrompt from "./components/LocationPrompt";
 // Each page loads on demand, so the first visit downloads only what it shows.
 const Home = lazy(() => import("./pages/Home"));
 const Deals = lazy(() => import("./pages/Deals"));
+const Advertise = lazy(() => import("./pages/Advertise"));
 const MyReturns = lazy(() => import("./pages/account/MyReturns"));
 const ReturnsAdmin = lazy(() => import("./pages/admin/ReturnsAdmin"));
 const Login = lazy(() => import("./pages/Login"));
@@ -23,7 +25,7 @@ const Wishlist = lazy(() => import("./pages/Wishlist"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const Payment = lazy(() => import("./pages/Payment"));
 const Profile = lazy(() => import("./pages/Profile"));
-const Orders = lazy(() => import("./pages/Orders"));
+const OrdersGate = lazy(() => import("./pages/Orders").then((m) => ({ default: m.OrdersGate })));
 const OrderDetails = lazy(() => import("./pages/OrderDetails"));
 const Vendors = lazy(() => import("./pages/Vendors"));
 const VendorDetail = lazy(() => import("./pages/VendorDetail"));
@@ -83,6 +85,7 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/shop" element={<Shop />} />
       <Route path="/deals" element={<Deals />} />
+      <Route path="/advertise" element={<Advertise />} />
       <Route path="/product/:id" element={<ProductDetails />} />
       <Route path="/vendors" element={<Vendors />} />
       <Route path="/vendors/:id" element={<VendorDetail />} />
@@ -114,20 +117,13 @@ export default function App() {
       />
       <Route
         path="/orders"
-        element={
-          <RequireAuth>
-            <Orders />
-          </RequireAuth>
-        }
+        // Signed out, buyers follow their orders with a phone code (guests too).
+        element={<OrdersGate />}
       />
       <Route path="/account/returns" element={<RequireAuth><MyReturns /></RequireAuth>} />
       <Route
         path="/orders/:id"
-        element={
-          <RequireAuth>
-            <OrderDetails />
-          </RequireAuth>
-        }
+        element={<OrdersGate><OrderDetails /></OrdersGate>}
       />
       <Route path="/buyer/compare" element={<FeaturePages role="buyer" />} />
       <Route
@@ -681,6 +677,7 @@ export default function App() {
     </Routes>
     </Suspense>
     <MobileBottomNav />
+    <LocationPrompt />
     </>
   );
 }

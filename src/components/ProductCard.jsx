@@ -47,7 +47,7 @@ export default function ProductCard({ p, href, label }) {
         </button>
       </div>
       <div className="product-info">
-        <small>{label ?? p.category}</small>
+        <small>{label ?? p.category}{p.bulkSeller && <span className="bulk-flag" title="Sold by a supplier: good for buying in large quantities">Supplier · bulk</span>}</small>
         <Link to={to} className="product-name">{p.name}</Link>
         <div className="rating">
           ★ {ratingLabel(p.rating)} {p.reviews > 0 && <span>({p.reviews})</span>}
