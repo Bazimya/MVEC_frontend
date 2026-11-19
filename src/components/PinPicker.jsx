@@ -71,6 +71,23 @@ export default function PinPicker({ value, onChange, label, help, allowGps = fal
     }
   }, [lat, lng]);
 
+  // "Find on map": pins the typed address now, even over a pin placed by hand.
+  const [finding, setFinding] = useState(false);
+  const findTyped = async () => {
+    setFinding(true); setLocating("");
+    try {
+      const [best] = await geoApi.search(`${searchText}`);
+      if (!best) { setLocating("We couldn't find that address on the map. Add the sector, or tap the spot on the map."); return; }
+      byHand.current = false;
+      setFound(best.label);
+      onChangeRef.current({ lat: round(best.lat), lng: round(best.lng) });
+    } catch {
+      setLocating("The map search isn't answering. Tap the spot on the map instead.");
+    } finally {
+      setFinding(false);
+    }
+  };
+
   const useMyLocation = () => {
     if (!navigator.geolocation) { setLocating("This browser can't share your location. Tap the map instead."); return; }
     setLocating("Finding you…");
@@ -89,6 +106,7 @@ export default function PinPicker({ value, onChange, label, help, allowGps = fal
         ? <p className="tiny">The map couldn't load. Check your connection and refresh the page.</p>
         : <div ref={boxRef} style={{ height: 260, borderRadius: 12, overflow: "hidden", marginTop: 6 }} />}
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
+        {query.length >= 4 && <button type="button" className="gradient-btn compact-btn" onClick={findTyped} disabled={finding}>{finding ? "Finding…" : "Find on map"}</button>}
         {allowGps && <button type="button" className="outline-btn compact-btn" onClick={useMyLocation}>Use my location</button>}
         {value && <button type="button" className="outline-btn compact-btn" onClick={() => place(null)}>Remove pin</button>}
         <small className="tiny">{locating || (found && value ? `Pinned from the address (${found}). Drag the pin if it's off.` : value ? `Pin set at ${value.lat}, ${value.lng}` : searchText !== undefined && searchText !== "" ? "Type the street and the pin follows, or tap the map." : "Tap the map to drop the pin.")}</small>
