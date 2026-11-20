@@ -388,3 +388,19 @@
 .rider-offer-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 10px 0; flex-wrap: wrap; }
 .rider-offer-row > div:first-child { flex: 1 1 220px; min-width: 0; }
 .rider-offer-row > div:last-child { display: flex; gap: 8px; }
+
+/* ---- Phone bottom sheet: who is signed in, account settings, sign out ---- */
+.mbn-account { margin: 4px 0 16px; padding-bottom: 14px; border-bottom: 1px solid var(--site-line); display: flex; align-items: center; gap: 10px; }
+.mbn-account .mbn-account-who { flex: 1; }
+.mbn-account .mbn-signout { width: auto; flex: 0 0 auto; padding: 0 14px; min-height: 42px; }
+.mbn-account-who { display: flex; align-items: center; gap: 12px; min-width: 0; color: var(--site-ink); }
+.mbn-account-who > span:last-child { min-width: 0; display: grid; }
+.mbn-account-who b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mbn-account-who small { font-size: 12px; color: var(--site-muted); }
+.mbn-account-avatar { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--gradient, var(--site-brand)); color: #fff; font-weight: 800; }
+.mbn-signout { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 46px; border-radius: 12px; border: 1px solid #f0c4c4; background: #fdf1f1; color: #b3261e; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.mbn-signout:active { transform: scale(.98); }
+[data-theme="dark"] .mbn-signout { background: #3a1d1d; border-color: #6b3434; color: #ffb4ab; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mbn-signout { background: #3a1d1d; border-color: #6b3434; color: #ffb4ab; } }
+/* The bottom bar sits over the sheet: leave room so its last row can be reached. */
+.mbn-sheet { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }

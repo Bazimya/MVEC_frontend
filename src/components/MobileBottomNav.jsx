@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Icon from './Icon';
 import { useAuth } from '../context/AuthContext';
 import { navForRole, mobilePrimaryByRole } from '../data/navItems';
@@ -13,6 +13,15 @@ const PUBLIC_ITEMS = [
 ];
 
 const DASH_PREFIXES = ['/admin', '/vendor', '/supplier', '/affiliate', '/delivery'];
+// Account settings per role (same as PORTAL_PROFILE in pages/Profile.jsx).
+const ACCOUNT_PATH = { vendor: '/vendor/profile', super_admin: '/admin/profile', supplier: '/supplier/profile', affiliate: '/affiliate/profile', delivery: '/delivery/profile' };
+// A signed-in shopper's "Account" sheet.
+const BUYER_ACCOUNT = [
+  ['/profile', 'My account', 'user'],
+  ['/orders', 'Orders', 'box'],
+  ['/account/returns', 'Returns', 'receipt'],
+  ['/buyer/notifications', 'Notifications', 'bell'],
+];
 const MOBILE_BREAKPOINT = '(max-width: 900px)';
 
 /**
@@ -45,8 +54,9 @@ function useIsMobileViewport() {
 }
 
 export default function MobileBottomNav() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const loc = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobileViewport();
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -73,14 +83,21 @@ export default function MobileBottomNav() {
       .filter(Boolean);
     overflow = all.filter((i) => !primaryHrefs.includes(i[0]));
     brandLabel = 'More tools';
+  } else if (user) {
+    // Signed in: the fifth tab opens the account sheet (with sign out).
+    primary = PUBLIC_ITEMS;
+    overflow = ACCOUNT_PATH[role] ? [[ACCOUNT_PATH[role].replace(/\/profile$/, '') || '/', 'Dashboard', 'grid'], ...BUYER_ACCOUNT.slice(1, 2)] : BUYER_ACCOUNT;
+    brandLabel = 'Account';
   } else {
-    const account = user ? ['/profile', 'Account', 'user'] : ['/login', 'Sign in', 'user'];
-    primary = [...PUBLIC_ITEMS, account];
+    primary = [...PUBLIC_ITEMS, ['/login', 'Sign in', 'user']];
     overflow = [];
     brandLabel = 'More';
   }
 
-  const hasMore = overflow.length > 0;
+  // Every signed-in person can reach their account and sign out from the sheet.
+  const hasMore = overflow.length > 0 || Boolean(user);
+  const accountHref = ACCOUNT_PATH[role] || '/profile';
+  const signOut = () => { setSheetOpen(false); logout(); navigate('/'); };
   const isActive = (href) => loc.pathname === href;
 
   return (
@@ -103,8 +120,8 @@ export default function MobileBottomNav() {
             onClick={() => setSheetOpen((v) => !v)}
             aria-expanded={sheetOpen}
           >
-            <Icon name={sheetOpen ? 'plus' : 'grid'} size={21} />
-            <span>More</span>
+            <Icon name={inDashboard ? (sheetOpen ? 'plus' : 'grid') : 'user'} size={21} />
+            <span>{inDashboard ? 'More' : 'Account'}</span>
           </button>
         )}
       </nav>
@@ -117,6 +134,21 @@ export default function MobileBottomNav() {
           />
           <div className={'mbn-sheet' + (sheetOpen ? ' open' : '')} role="dialog" aria-label={brandLabel}>
             <div className="mbn-sheet-handle" />
+            {user && (
+              <div className="mbn-account">
+                <Link to={accountHref} className="mbn-account-who" onClick={() => setSheetOpen(false)}>
+                  <span className="mbn-account-avatar">{(user.fullName || user.name || user.email || '?')[0]?.toUpperCase()}</span>
+                  <span>
+                    <b>{user.fullName || user.name || 'My account'}</b>
+                    <small>Account settings</small>
+                  </span>
+                </Link>
+                <button type="button" className="mbn-signout" onClick={signOut}>
+                  <Icon name="logout" size={18} />
+                  <span>Sign out</span>
+                </button>
+              </div>
+            )}
             <div className="mbn-sheet-head">{brandLabel}</div>
             <div className="mbn-sheet-grid">
               {overflow.map(([href, label, icon]) => (
