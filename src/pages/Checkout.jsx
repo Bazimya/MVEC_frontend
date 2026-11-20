@@ -12,6 +12,7 @@ import { addressesApi } from "../API/addresses";
 import { shippingApi } from "../API/shipping";
 import PinPicker from "../components/PinPicker";
 import { lastPin } from "../API/geo";
+import { phoneCodesRequired } from "../lib/phoneCodes";
 import { promotionsApi } from "../API/promotions";
 import { RWANDA_LOCATIONS, PROVINCES } from "../data/rwandaLocations";
 import { extractErrorMessage } from "../API/client";
@@ -287,7 +288,8 @@ export default function Checkout() {
     if (undeliverable) { showError(`${undeliverableMessage} Choose another district, choose pickup, or remove those items.`); return; }
 
     // No account needed: a guest confirms their phone with a code first.
-    if (!user) { sendGuestCode(); return; }
+    // Guests: a text code proves the phone, or (no SMS yet) the number alone.
+    if (!user) { phoneCodesRequired().then((codes) => (codes ? sendGuestCode() : finishGuest(""))); return; }
 
     setSubmitting(true);
     try {
@@ -319,13 +321,20 @@ export default function Checkout() {
     e.preventDefault();
     const code = verify.code.trim();
     if (!/^\d{6}$/.test(code)) { setVerify((v) => ({ ...v, error: "Enter the 6-digit code." })); return; }
-    setVerify((v) => ({ ...v, busy: true, error: "" }));
+    await finishGuest(code);
+  }
+
+  // Signs the guest in (with the code, or the number alone when codes are off) and places the order.
+  async function finishGuest(code) {
+    if (code) setVerify((v) => ({ ...v, busy: true, error: "" }));
+    else setSubmitting(true);
     const basket = items.map((x) => ({ ...x }));
     let session;
     try {
-      session = await authApi.guestVerify({ phone: form.phone.trim(), code, fullName: form.name.trim(), email: form.email.trim() || undefined });
+      session = await authApi.guestVerify({ phone: form.phone.trim(), code: code || undefined, fullName: form.name.trim(), email: form.email.trim() || undefined });
     } catch (err) {
-      setVerify((v) => ({ ...v, busy: false, error: extractErrorMessage(err) }));
+      if (code) setVerify((v) => ({ ...v, busy: false, error: extractErrorMessage(err) }));
+      else { setSubmitting(false); showError(extractErrorMessage(err)); }
       return;
     }
     // The basket goes with the order, so don't also merge it into the account cart.

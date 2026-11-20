@@ -8,6 +8,7 @@ import { extractErrorMessage } from "../API/client";
 import { authApi } from "../API/auth";
 import { riderApi } from "../API/rider";
 import DistrictsPicker from "../components/DistrictsPicker";
+import { phoneCodesRequired, usePhoneCodes } from "../lib/phoneCodes";
 import { isRwandanPhone } from "../utils/delivery";
 import { afterSignIn, safeRedirect } from "../utils/redirect";
 
@@ -34,6 +35,7 @@ export default function Signup() {
   });
   // Delivery workers prove their phone with a code, and choose a password to sign in with later.
   const [riderCode, setRiderCode] = useState(null); // { code, sentTo }
+  const codesOn = usePhoneCodes();
   const isRider = form.role === "delivery";
   const [error, setError] = useState(""),
     [loading, setLoading] = useState(false);
@@ -93,6 +95,21 @@ export default function Signup() {
     }
     setLoading(true);
     try {
+      // No SMS yet: the account is created with the phone and password straight away.
+      if (!riderCode && !(await phoneCodesRequired())) {
+        const session = await riderApi.register({
+          phone: form.telephone.trim(),
+          fullName: form.fullName.trim(),
+          email: form.email.trim() || undefined,
+          vehicleType: form.vehicleType,
+          plateNumber: needsPlate(form.vehicleType) ? form.plateNumber.trim() : undefined,
+          districts: form.districts,
+          password: form.password,
+        });
+        startSession(session);
+        navigate("/delivery", { replace: true });
+        return;
+      }
       if (!riderCode) {
         const res = await authApi.sendCode(form.telephone.trim(), "registration", "delivery");
         setRiderCode({ code: res.devCode || "", sentTo: res.devCode ? `${res.message} Your code: ${res.devCode}` : res.message || "" });
@@ -283,7 +300,7 @@ export default function Signup() {
           </div>
         </div>
         <button className="submit-btn" type="submit" disabled={loading}>
-          {loading ? "Please wait…" : isRider && !riderCode ? "Send me a code" : "Create account"}
+          {loading ? "Please wait…" : isRider && !riderCode && codesOn ? "Send me a code" : "Create account"}
         </button>
       </form>
       {!isRider && <GoogleButton text="signup_with" onCredential={handleGoogle} onError={() => setError("Google sign-up was cancelled or failed. Try again.")} />}

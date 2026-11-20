@@ -7,6 +7,7 @@ import { extractErrorMessage, mapAuthResponse } from "../API/client";
 import { authApi } from "../API/auth";
 import { useAuth } from "../context/AuthContext";
 import { afterSignIn, safeRedirect } from "../utils/redirect";
+import { usePhoneCodes } from "../lib/phoneCodes";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -20,6 +21,8 @@ export default function Login() {
   const update = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   // Guests, delivery workers (no password) and anyone who prefers it log in with a one-time code.
   const [codeLogin, setCodeLogin] = useState(null); // { phone, code, sent, sentTo }
+  // No SMS yet: no code sign-in (riders use their password, guests their phone at checkout or "Orders").
+  const codesOn = usePhoneCodes();
 
   async function sendLoginCode(e) {
     e.preventDefault();
@@ -105,7 +108,7 @@ export default function Login() {
             <button className="submit-btn" type="submit" disabled={loading}>{loading ? "Please wait…" : codeLogin.sent ? "Log in" : "Send me a code"}</button>
             <button type="button" className="text-btn" onClick={() => setCodeLogin(null)}>Use my password instead</button>
           </form>
-        : <p className="switch-text">Guest or delivery worker? <button type="button" className="text-btn" onClick={() => { setError(""); setCodeLogin({ phone: "", code: "", sent: false }); }}>Log in with a code</button></p>}
+        : codesOn && <p className="switch-text">Guest or delivery worker? <button type="button" className="text-btn" onClick={() => { setError(""); setCodeLogin({ phone: "", code: "", sent: false }); }}>Log in with a code</button></p>}
       <GoogleButton onCredential={handleGoogle} onError={() => setError("Google sign-in was cancelled or failed. Try again.")} />
       <p className="switch-text">
         Don&apos;t have an account? <Link to="/signup" state={location.state || (returnTo ? { from: returnTo } : undefined)}>Create one</Link>

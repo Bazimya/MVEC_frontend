@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { authApi } from "../API/auth";
 import { useAuth } from "../context/AuthContext";
 import { isRwandanPhone } from "../utils/delivery";
+import { usePhoneCodes } from "../lib/phoneCodes";
 import { useEffect, useMemo, useState } from "react";
 import Pagination from "../components/Pagination";
 import Storefront from "../components/Storefront";
@@ -24,6 +25,18 @@ export function FollowOrders() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  // No SMS yet: the phone and an order number instead of a code.
+  const codesOn = usePhoneCodes();
+  const [orderNumber, setOrderNumber] = useState("");
+
+  const lookUp = async (e) => {
+    e.preventDefault();
+    if (!isRwandanPhone(phone)) { setError("Enter the phone number you ordered with (07…)."); return; }
+    if (orderNumber.trim().length < 5) { setError("Enter the order number from your confirmation (it starts with ORD-)."); return; }
+    setBusy(true); setError("");
+    try { startSession(await authApi.guestVerify({ phone: phone.trim(), track: true, orderNumber: orderNumber.trim() })); }
+    catch (err) { setError(extractErrorMessage(err)); setBusy(false); }
+  };
 
   const send = async (e) => {
     e.preventDefault();
@@ -46,9 +59,17 @@ export function FollowOrders() {
       <section className="follow-orders">
         <span className="eyebrow">MY ORDERS</span>
         <h1>Follow your order</h1>
-        <p>Enter the phone number you ordered with. We'll text you a code, then show your orders and where each parcel is.</p>
+        <p>{codesOn === false
+          ? "Enter the phone number you ordered with and one of your order numbers. We'll show your orders and where each parcel is."
+          : "Enter the phone number you ordered with. We'll text you a code, then show your orders and where each parcel is."}</p>
         {error && <div className="form-error" role="alert">{error}</div>}
-        {!sent ? (
+        {codesOn === false ? (
+          <form onSubmit={lookUp} className="follow-orders-form">
+            <label className="field"><span>Phone number</span><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07xx xxx xxx" required /></label>
+            <label className="field"><span>Order number</span><input value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} placeholder="ORD-…" autoCapitalize="characters" required /></label>
+            <button type="submit" className="gradient-btn" disabled={busy}>{busy ? "Checking…" : "Show my orders"}</button>
+          </form>
+        ) : !sent ? (
           <form onSubmit={send} className="follow-orders-form">
             <label className="field"><span>Phone number</span><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07xx xxx xxx" required /></label>
             <button type="submit" className="gradient-btn" disabled={busy}>{busy ? "Sending…" : "Text me a code"}</button>

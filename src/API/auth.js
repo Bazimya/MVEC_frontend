@@ -34,9 +34,9 @@ export const authApi = {
   guestSendCode: (phone, email) =>
     client.post("/auth/guest/send-code", { phone, ...(email ? { email } : {}) }).then((r) => r.data),
   // `track`: "follow my order" while signed out (only numbers that ordered).
-  guestVerify: ({ phone, code, fullName, email, track }) =>
+  guestVerify: ({ phone, code, fullName, email, track, orderNumber }) =>
     client
-      .post("/auth/guest/verify", { phone, code, fullName, email, ...(track ? { track: true } : {}) })
+      .post("/auth/guest/verify", { phone, code, fullName, email, ...(track ? { track: true, orderNumber } : {}) })
       .then((r) => ({ ...mapAuthResponse(r.data), guest: Boolean(r.data.guest) })),
   // Phone code for any existing account (riders have no password), or to
   // prove a phone before signing up: purpose "login" | "registration".
