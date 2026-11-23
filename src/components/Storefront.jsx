@@ -9,6 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { notificationsApi } from '../API/notifications';
 import ProductImage from './ProductImage';
 import { money } from '../utils/format';
+import TestModeBanner from './TestModeBanner';
 
 const DASHBOARD_BY_ROLE = { vendor: '/vendor', supplier: '/supplier', affiliate: '/affiliate', delivery: '/delivery', super_admin: '/admin' };
 const NOTIFICATIONS_BY_ROLE = { vendor: '/vendor/notifications', supplier: '/supplier/notifications', affiliate: '/affiliate/notifications', super_admin: '/admin/notifications' };
@@ -74,6 +75,7 @@ export default function Storefront({ children }) {
   const isActive = (to) => (to.includes('?') ? `${location.pathname}${location.search}` === to : location.pathname === to && !location.search.includes('deal='));
 
   return <div className="site">
+    <TestModeBanner />
     <header className="site-header">
       <div className="site-bar">
         <button type="button" className="site-icon site-menu-btn" onClick={() => setMenuOpen((v) => !v)} aria-expanded={menuOpen} aria-label="Menu">

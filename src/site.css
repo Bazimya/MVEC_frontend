@@ -404,3 +404,8 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mbn-signout { background: #3a1d1d; border-color: #6b3434; color: #ffb4ab; } }
 /* The bottom bar sits over the sheet: leave room so its last row can be reached. */
 .mbn-sheet { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+
+/* Test-mode notice (components/TestModeBanner.jsx): shown while payments are simulated. */
+.site-test-banner { padding: 8px var(--site-gutter); background: var(--site-gold); color: #1d1300; font-size: 13px; line-height: 1.4; text-align: center; }
+.site-test-banner b { margin-right: 6px; text-transform: uppercase; letter-spacing: .5px; }
+.payment-test-note { margin: 0 0 14px; }

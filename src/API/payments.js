@@ -11,6 +11,8 @@ export const paymentsApi = {
   payKpay: ({ orderId, method, phoneNumber }) =>
     client.post("/payments/pay/kpay", { orderId, method, phoneNumber }).then((r) => r.data),
   // Asks the backend to reconcile with the gateway and returns the latest state.
+  // Public: { testMode, simulated: { mobileMoney, card, kpay } }. testMode means no real money moves.
+  getMode: () => client.get("/payments/mode").then((r) => r.data),
   getStatus: (paymentId) =>
     client.get(`/payments/status/${paymentId}`).then((r) => r.data),
 };

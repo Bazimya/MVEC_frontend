@@ -8,6 +8,7 @@ import { getSocket } from "../services/socket";
 import { useAuth } from "../context/AuthContext";
 import { money } from "../utils/format";
 import { isRwandanPhone } from "../utils/delivery";
+import { usePaymentTestMode } from "../components/TestModeBanner";
 
 const POLL_MS = 3000;
 const POLL_LIMIT_MS = 3 * 60 * 1000;
@@ -25,6 +26,7 @@ export default function Payment() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const testMode = usePaymentTestMode();
   const [method, setMethod] = useState("momo"); // momo | card | kpay
   const [kpayMethod, setKpayMethod] = useState("momo"); // momo | card | spenn (through K-Pay)
 
@@ -223,13 +225,14 @@ export default function Payment() {
         </>
       ) : stage === "confirmed" ? (
         <>
-          <h2>Payment confirmed ✓</h2>
-          <p>Thank you! Your payment is held safely by Ikiguzi. Taking you to your order…</p>
+          <h2>{testMode ? "Test payment confirmed ✓" : "Payment confirmed ✓"}</h2>
+          <p>{testMode ? "No money was taken. Taking you to your order…" : "Thank you! Your payment is held safely by Ikiguzi. Taking you to your order…"}</p>
           <Link className="gradient-btn" to={`/orders/${id}`}>View order</Link>
         </>
       ) : (
         <form onSubmit={pay}>
           <h2>How would you like to pay?</h2>
+          {testMode && <div className="form-alert payment-test-note" role="note"><b>Test payment.</b> Nothing is charged and no prompt is sent to your phone. Any method you pick is confirmed straight away.</div>}
           <div role="radiogroup" aria-label="Payment method">
             <label className={`payment-option ${method === "momo" ? "selected" : ""}`}>
               <input type="radio" name="method" value="momo" checked={method === "momo"} onChange={() => setMethod("momo")} disabled={stage === "waiting"} />
