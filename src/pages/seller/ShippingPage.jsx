@@ -65,16 +65,16 @@ function ZoneModal({ zone, storeId, onClose, onSaved }) {
     setError('');
     if (form.scope === 'PROVINCES' && !form.provinces.length) return setError('Select at least one province.');
     if (form.scope === 'DISTRICTS' && !form.districts.length) return setError('Select at least one district.');
-    if (form.express && form.expressFee !== '' && Number(form.expressFee) < Number(form.fee || 0)) return setError('Express delivery should not cost less than standard.');
+    if (!(Number(form.fee) > 0)) return setError('Set a standard delivery fee. Delivery is never free on Ikiguzi.');
     const payload = {
       name: form.name,
       provinces: form.scope === 'PROVINCES' ? form.provinces : [],
       districts: form.scope === 'DISTRICTS' ? form.districts : [],
       fee: Number(form.fee || 0),
-      expressFee: form.express && form.expressFee !== '' ? Number(form.expressFee) : null,
+      expressFee: null,
       pickupFee: form.pickup ? Number(form.pickupFee || 0) : 0,
-      methods: ['STANDARD', ...(form.express ? ['EXPRESS'] : []), ...(form.pickup ? ['PICKUP'] : [])],
-      freeOverAmount: Number(form.freeOverAmount || 0),
+      methods: ['STANDARD', ...(form.pickup ? ['PICKUP'] : [])],
+      freeOverAmount: 0,
       eta: form.eta || '1–3 days',
       status: form.status,
       ...(zone ? {} : { storeId: storeId || undefined }),
@@ -119,14 +119,9 @@ function ZoneModal({ zone, storeId, onClose, onSaved }) {
       <div className="seller-zone-section">
         <h4>Fees</h4>
         <div className="seller-form-grid">
-          <label className="field half"><span>Standard fee (RWF) *</span><input type="number" min="0" value={form.fee} onChange={e => set('fee', e.target.value)} required /></label>
+          <label className="field half"><span>Standard fee (RWF) *</span><input type="number" min="1" value={form.fee} onChange={e => set('fee', e.target.value)} required /></label>
           <label className="field half"><span>Delivery time</span><input value={form.eta} onChange={e => set('eta', e.target.value)} placeholder="1–3 days" /></label>
-          <label className="field half"><span>Free standard delivery from (RWF)</span><input type="number" min="0" value={form.freeOverAmount} onChange={e => set('freeOverAmount', e.target.value)} placeholder="No free delivery" /><small className="tiny">Order subtotal from this store.</small></label>
           <label className="field half"><span>Status</span><select value={form.status} onChange={e => set('status', e.target.value)}><option value="ACTIVE">Active</option><option value="PAUSED">Paused</option></select></label>
-        </div>
-        <div className="seller-method-row">
-          <label className="seller-switch"><input type="checkbox" checked={form.express} onChange={e => set('express', e.target.checked)} /><span>Offer express delivery</span></label>
-          {form.express && <label className="field"><span>Express fee (RWF)</span><input type="number" min="0" value={form.expressFee} onChange={e => set('expressFee', e.target.value)} placeholder="Same as standard" /></label>}
         </div>
         <div className="seller-method-row">
           <label className="seller-switch"><input type="checkbox" checked={form.pickup} onChange={e => set('pickup', e.target.checked)} /><span>Allow pickup</span></label>
@@ -162,7 +157,7 @@ function PreviewCard({ storeId }) {
       <label className="field half"><span>Province</span><select value={form.province} onChange={e => set('province', e.target.value)}>{PROVINCES.map(p => <option key={p}>{p}</option>)}</select></label>
       <label className="field half"><span>District</span><select value={form.district} onChange={e => set('district', e.target.value)}>{RWANDA_LOCATIONS[form.province].map(d => <option key={d}>{d}</option>)}</select></label>
       <label className="field half"><span>Order subtotal (RWF)</span><input type="number" min="0" value={form.subtotal} onChange={e => set('subtotal', e.target.value)} /></label>
-      <label className="field half"><span>Method</span><select value={form.method} onChange={e => set('method', e.target.value)}><option value="STANDARD">Standard</option><option value="EXPRESS">Express</option><option value="PICKUP">Pickup</option></select></label>
+      <label className="field half"><span>Method</span><select value={form.method} onChange={e => set('method', e.target.value)}><option value="STANDARD">Delivery</option><option value="PICKUP">Pickup</option></select></label>
     </div>
     {error && <div className="form-error">{error}</div>}
     {result && (result.deliverable
@@ -218,7 +213,7 @@ export default function ShippingPage() {
         </button>)}
       </div>}
 
-      {!allZones.length && <div className="verified-box"><b>Using Ikiguzi standard rates</b><p>Until you add a zone, buyers pay Ikiguzi standard delivery: free in Kigali City and 5,000 RWF elsewhere (express 10,000 RWF). Add zones to set your own fees and coverage.</p></div>}
+      {!allZones.length && <div className="verified-box"><b>Using Ikiguzi standard rates</b><p>Until you add a zone, buyers pay Ikiguzi standard delivery: 2,000 RWF in Kigali City and 5,000 RWF elsewhere. Add zones to set your own fees and coverage.</p></div>}
       {usingOtherStores && <div className="verified-box"><b>No zones for this store yet</b><p>Checkout uses your other stores' zones for its items until you add zones here.</p></div>}
 
       <div className="data-card">
@@ -231,10 +226,8 @@ export default function ShippingPage() {
               <small><Icon name="shop" size={12} /> {z.coverage}</small>
             </div>
             <div className="seller-zone-fees">
-              <span><small>Standard</small><b>{Number(z.fee) === 0 ? 'Free' : money(z.fee)}</b></span>
-              {(z.methods || []).includes('EXPRESS') && <span><small>Express</small><b>{money(z.expressFee ?? z.fee)}</b></span>}
+              <span><small>Standard</small><b>{money(z.fee)}</b></span>
               {(z.methods || []).includes('PICKUP') && <span><small>Pickup</small><b>{Number(z.pickupFee) ? money(z.pickupFee) : 'Free'}</b></span>}
-              {z.freeOverAmount > 0 && <span><small>Free from</small><b>{money(z.freeOverAmount)}</b></span>}
               <span><small>Time</small><b>{z.eta}</b></span>
             </div>
             <StatusPill value={z.status} />

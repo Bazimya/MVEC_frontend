@@ -8,6 +8,7 @@ import { wholesaleApi } from "../API/wholesale";
 import { extractErrorMessage } from "../API/client";
 import { useAuth } from "../context/AuthContext";
 import { money } from "../utils/format";
+import { confirmStep } from "../pages/seller/shared";
 
 const dateDMY = (d) => (d ? new Date(d).toLocaleDateString("en-GB") : "—");
 const titleCase = (s) => String(s || "").toLowerCase().replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -199,7 +200,7 @@ export default function DeliveryTracking({ role = "vendor", initialTab = "active
     }
   };
 
-  const advance = (o, status) => act(o, () => ordersApi.updateVendorOrderStatus({ orderId: o.id, status }), "Updated. The buyer has been notified.");
+  const advance = (o, status) => confirmStep(o, status) && act(o, () => ordersApi.updateVendorOrderStatus({ orderId: o.id, status }), "Updated. The buyer has been notified.");
   const confirm = (o) => {
     const code = (codes[o.id] || "").trim();
     if (code.length !== 6) return;

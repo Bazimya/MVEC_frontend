@@ -6,7 +6,7 @@ import { ordersApi } from '../API/orders';
 import { payoutsApi } from '../API/payouts';
 import { extractErrorMessage } from '../API/client';
 import { useAuth } from '../context/AuthContext';
-import { money, dateDMY, personName, titleCase, parsePercent, sellerNextStatuses, canRecordCash, stepLabelFor, orderFlowFor, flowIndexOf, flowStepLabel, StatusPill, FormModal } from './seller/shared';
+import { money, dateDMY, personName, titleCase, parsePercent, sellerNextStatuses, canRecordCash, stepLabelFor, confirmStep, orderFlowFor, flowIndexOf, flowStepLabel, StatusPill, FormModal } from './seller/shared';
 import ProductImage from '../components/ProductImage';
 import LiveTracking from '../components/LiveTracking';
 
@@ -117,7 +117,7 @@ export default function SellerOrderDetail() {
             <h3 className="subhead">Next step</h3>
             {(next.length || canRecordCash(order) || allNext.includes('CANCELLED'))
               ? <div className="seller-next-actions">
-                  {next.map(s => <button type="button" key={s} className="gradient-btn seller-next-primary" disabled={updating} onClick={() => updateStatus({ status: s })}>
+                  {next.map(s => <button type="button" key={s} className="gradient-btn seller-next-primary" disabled={updating} onClick={() => confirmStep(order, s) && updateStatus({ status: s })}>
                     <Icon name={s === 'SHIPPED' || s === 'READY_FOR_SHIPMENT' ? 'box' : 'check'} size={17} />
                     {updating ? 'Updating…' : stepLabelFor(order, s) || titleCase(s)}
                     <Icon name="arrow" size={16} />

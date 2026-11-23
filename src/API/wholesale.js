@@ -11,8 +11,12 @@ export const wholesaleApi = {
   // Vendor pays: { method: "momo" | "card", phoneNumber? } -> { paymentId, status, checkoutUrl? }
   pay: (orderId, payload) =>
     client.post(`/wholesale/orders/${orderId}/pay`, payload).then((r) => r.data),
-  confirmReceipt: (orderId) =>
-    client.post(`/wholesale/orders/${orderId}/confirm-receipt`).then((r) => r.data),
+  // addToStock false = "not now": the order then shows "Add to my stock".
+  confirmReceipt: (orderId, addToStock = true) =>
+    client.post(`/wholesale/orders/${orderId}/confirm-receipt`, { addToStock }).then((r) => r.data),
+  // Puts a completed purchase's goods in the vendor's store (existing products restocked, new ones created from the supplier's listing).
+  addToStock: (orderId) =>
+    client.post(`/wholesale/orders/${orderId}/add-to-stock`).then((r) => r.data),
   reportProblem: (orderId, reason) =>
     client.post(`/wholesale/orders/${orderId}/report-problem`, { reason }).then((r) => r.data),
   // Vendor or supplier, before shipping (suppliers must give a reason).

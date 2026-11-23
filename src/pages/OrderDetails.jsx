@@ -201,7 +201,7 @@ export default function OrderDetails() {
         ))}
         <div className="summary-lines">
           <div><span>Products</span><b>{money(order.subtotal ?? order.totalAmount - (order.shippingFee || 0))}</b></div>
-          <div><span>{isPickup ? "Pickup" : "Delivery"}{order.shippingMethod === "EXPRESS" ? " (express)" : ""}{order.shippingBreakdown?.length > 1 ? ` · ${order.shippingBreakdown.length} parcels` : ""}</span><b>{order.shippingFee ? money(order.shippingFee) : "FREE"}</b></div>
+          <div><span>{isPickup ? "Pickup" : "Delivery"}{order.shippingBreakdown?.length > 1 ? ` · ${order.shippingBreakdown.length} parcels` : ""}</span><b>{order.shippingFee ? money(order.shippingFee) : "FREE"}</b></div>
           {!isPickup && order.shippingBreakdown?.filter((p) => p.eta).map((p, i) => <div className="tiny" key={i}><span>{p.storeName || "Seller"}</span><span>arrives in {p.eta}</span></div>)}
           {order.discountAmount > 0 && <div><span>Coupon {order.coupon?.code}</span><b>−{money(order.discountAmount)}</b></div>}
           <div className="grand"><span>Total</span><strong>{money(order.totalAmount)}</strong></div>

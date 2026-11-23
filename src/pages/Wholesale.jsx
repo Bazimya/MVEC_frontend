@@ -22,7 +22,7 @@ const STATUS = {
   ESCROW_HELD: ["Paid · Ikiguzi holds the money", "pending", "The supplier has 7 days to ship. You can still cancel for a full refund.", "Paid. Ship within 7 days or the order is cancelled and refunded.", "Waiting for the supplier to ship"],
   SHIPPED: ["Shipped", "pending", "Confirm when the goods arrive, or report a problem. After 7 days the supplier is paid automatically.", "Waiting for the vendor to confirm. You are paid automatically after 7 days if no problem is reported.", "Confirm when the goods arrive"],
   DELIVERED: ["Delivered", "pending", "Confirm receipt to pay the supplier.", "Waiting for the vendor to confirm receipt.", "Confirm receipt"],
-  CONFIRMED_RELEASED: ["Completed", "active", "Received. The supplier was paid and the goods are in your inventory.", "Completed. The money (minus Ikiguzi's commission) is in your balance.", "Goods are in your inventory"],
+  CONFIRMED_RELEASED: ["Completed", "active", "Received. The supplier was paid.", "Completed. The money (minus Ikiguzi's commission) is in your balance.", "Received and paid"],
   DISPUTED: ["Problem reported", "danger", "Ikiguzi is reviewing the problem; the money stays on hold.", "The vendor reported a problem. Ikiguzi will decide; the money stays on hold.", "Ikiguzi is reviewing"],
   CANCELLED: ["Cancelled", "danger", "Cancelled. If you had paid, the money is being refunded.", "Cancelled.", "Nothing to do"],
 };
@@ -137,9 +137,15 @@ export function WholesaleOrders({ role }) {
     try { await fn(); setNotice({ ok: true, text: typeof text === "function" ? text() : text }); setDetails(null); await load(); } catch (err) { setNotice({ ok: false, text: extractErrorMessage(err) }); } finally { setBusy(""); }
   };
   const confirmReceipt = async (o) => {
-    if (!window.confirm(`Confirm you received everything in ${o.orderNumber}? ${money(o.totalAmount)} is released to ${partyName(o.supplier)} and the goods are added to ${o.store?.storeName || "your store"}'s inventory. This cannot be undone.`)) return;
+    if (!window.confirm(`Confirm you received everything in ${o.orderNumber}? ${money(o.totalAmount)} is released to ${partyName(o.supplier)}. This cannot be undone.`)) return;
+    const store = o.store?.storeName || "your store";
+    const add = window.confirm(`Add these goods to ${store}'s stock now?\n\nProducts you bought before are restocked; new ones are listed for you from the supplier's details, so you don't start from scratch.\n\nOK: add to my stock. Cancel: not now (you can add them later).`);
     let message = `${o.orderNumber} confirmed. The supplier has been paid.`;
-    await run(o, async () => { message = (await wholesaleApi.confirmReceipt(o._id)).message || message; }, () => message);
+    await run(o, async () => { message = (await wholesaleApi.confirmReceipt(o._id, add)).message || message; }, () => message);
+  };
+  const addToStock = (o) => {
+    let message = "Added to your stock.";
+    return run(o, async () => { message = (await wholesaleApi.addToStock(o._id)).message || message; }, () => message);
   };
   const ship = (o) => run(o, () => wholesaleApi.markShipped(o._id), `${o.orderNumber} marked as shipped. The vendor was notified.`);
   const vendorCancel = (o) => window.confirm(o.status === "PENDING_PAYMENT" ? `Cancel ${o.orderNumber}? The reserved stock goes back to the supplier.` : `Cancel ${o.orderNumber}? Your ${money(o.totalAmount)} is refunded the way you paid.`)
@@ -154,6 +160,7 @@ export function WholesaleOrders({ role }) {
       const arrived = ["SHIPPED", "DELIVERED"].includes(o.status);
       if (o.status === "PENDING_PAYMENT") out.push(<button key="pay" type="button" className="table-action-btn primary" onClick={() => setPaying(o)}><Icon name="wallet" size={15} />Pay {money(o.totalAmount)}</button>);
       if (arrived || (!inRow && o.status === "ESCROW_HELD")) out.push(<button key="ok" type="button" className={`table-action-btn${arrived ? " primary" : ""}`} disabled={b} onClick={() => confirmReceipt(o)}><Icon name="check" size={15} />{arrived ? "Confirm receipt" : "Already received it"}</button>);
+      if (o.status === "CONFIRMED_RELEASED" && !o.stockedAt) out.push(<button key="stock" type="button" className="table-action-btn primary" disabled={b} onClick={() => addToStock(o)}><Icon name="box" size={15} />Add to my stock</button>);
       if (inRow) return out;
       if (["SHIPPED", "DELIVERED", "ESCROW_HELD"].includes(o.status)) out.push(<button key="pb" type="button" className="table-action-btn" disabled={b} onClick={() => setAsking({ kind: "problem", order: o })}>Report a problem</button>);
       if (["PENDING_PAYMENT", "ESCROW_HELD"].includes(o.status)) out.push(<button key="cx" type="button" className="table-action-btn" disabled={b} onClick={() => vendorCancel(o)}>Cancel order</button>);
@@ -216,7 +223,7 @@ export function WholesaleOrders({ role }) {
         {(details.items || []).map((i, k) => <div key={k}><span><b>{i.productName}</b><small>{i.quantity} {i.unit || ""} × {money(i.unitPrice)}</small></span><b>{money(i.quantity * i.unitPrice)}</b></div>)}
         <div className="purchase-total"><span>Total</span><b>{money(details.totalAmount)}</b></div>
       </div>
-      {!supplier && <p className="tiny">Delivered to <b>{details.store?.storeName || "your primary store"}</b>. {details.stockedAt ? <>The goods were added to its inventory. <Link to="/vendor/inventory">View inventory</Link></> : "The goods are added to its inventory when you confirm receipt."}</p>}
+      {!supplier && <p className="tiny">Delivered to <b>{details.store?.storeName || "your primary store"}</b>. {details.stockedAt ? <>The goods were added to its inventory. <Link to="/vendor/inventory">View inventory</Link></> : details.status === "CONFIRMED_RELEASED" ? "The goods are not in its inventory yet: use \"Add to my stock\"." : "When you confirm receipt you can add the goods to its inventory in one tap."}</p>}
       <div className="purchase-dates tiny">{[["Paid", details.paidAt], ["Shipped", details.shippedAt], ["Completed", details.confirmedAt], ["Added to inventory", supplier ? null : details.stockedAt]].filter((d) => d[1]).map((d) => <span key={d[0]}>{d[0]} {formatDate(d[1])}</span>)}</div>
       <div className="modal-actions"><button type="button" className="outline-btn" onClick={() => setDetails(null)}>Close</button>{actionsFor(details)}</div>
     </div></div>}

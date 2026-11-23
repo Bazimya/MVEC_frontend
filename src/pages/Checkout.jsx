@@ -29,7 +29,6 @@ const readSavedForm = () => {
   try { return JSON.parse(sessionStorage.getItem(FORM_KEY) || "null"); } catch { return null; }
 };
 
-const SPEEDS = ["standard", "express"];
 
 // The province a district belongs to, matched case-insensitively.
 const findDistrict = (name) => {
@@ -147,11 +146,11 @@ export default function Checkout() {
 
   const isPickup = form.fulfilment === "pickup";
   const isDelivery = form.fulfilment === "delivery";
-  const chosenMethod = isPickup ? "pickup" : isDelivery ? form.method : "";
+  const chosenMethod = isPickup ? "pickup" : isDelivery ? "standard" : "";
 
-  // Quotes: delivery fees from each seller's zones (one per speed), or the
-  // pickup points. The server recomputes everything when the order is created.
-  const [quotes, setQuotes] = useState({ standard: null, express: null, pickup: null });
+  // Quotes: standard delivery fees from each seller's zones (or rider
+  // distance), or the pickup points. Two ways only: pick it up or deliver it. The server recomputes everything when the order is created.
+  const [quotes, setQuotes] = useState({ standard: null, pickup: null });
   const [quoting, setQuoting] = useState(false);
   const [quoteError, setQuoteError] = useState("");
   const quote = chosenMethod ? quotes[chosenMethod] : null;
@@ -172,7 +171,7 @@ export default function Checkout() {
   useEffect(() => {
     const validDistrict = RWANDA_LOCATIONS[form.province]?.includes(form.district);
     if (!quoteItems.length || (isDelivery && !validDistrict) || !form.fulfilment) {
-      setQuotes({ standard: null, express: null, pickup: null });
+      setQuotes({ standard: null, pickup: null });
       return undefined;
     }
     let alive = true;
@@ -180,9 +179,9 @@ export default function Checkout() {
     setQuoteError("");
     const t = setTimeout(() => {
       const request = isPickup
-        ? shippingApi.quote({ method: "PICKUP", items: quoteItems }).then((pickup) => ({ standard: null, express: null, pickup }))
-        : Promise.all(SPEEDS.map((m) => shippingApi.quote({ address: { province: form.province, district: form.district, ...form.pin }, method: m.toUpperCase(), items: quoteItems })))
-            .then(([standard, express]) => ({ standard, express, pickup: null }));
+        ? shippingApi.quote({ method: "PICKUP", items: quoteItems }).then((pickup) => ({ standard: null, pickup }))
+        : shippingApi.quote({ address: { province: form.province, district: form.district, ...form.pin }, method: "STANDARD", items: quoteItems })
+            .then((standard) => ({ standard, pickup: null }));
       request
         .then((next) => alive && setQuotes(next))
         .catch((err) => alive && setQuoteError(extractErrorMessage(err, isPickup
@@ -215,13 +214,13 @@ export default function Checkout() {
   useEffect(() => {
     if (coupon) checkCoupon(coupon.code, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quoteKey, form.method]);
+  }, [quoteKey]);
 
   const feeLabel = (method) => {
     const q = quotes[method];
     if (!q) return quoting ? "…" : RWANDA_LOCATIONS[form.province]?.includes(form.district) ? "—" : "Choose your district";
     if (!q.deliverable) return "Unavailable";
-    return q.shippingFee === 0 ? "FREE" : money(q.shippingFee);
+    return money(q.shippingFee);
   };
 
   const update = (e) => {
@@ -379,7 +378,7 @@ export default function Checkout() {
   const deliveryRow = !form.fulfilment
     ? "Choose pickup or delivery"
     : isPickup ? "FREE (pickup)"
-    : quoting && !quote ? "…" : undeliverable || !quote ? "—" : delivery === 0 ? "FREE" : money(delivery);
+    : quoting && !quote ? "…" : undeliverable || !quote ? "—" : money(delivery);
 
   return <Storefront><main className="checkout-page">
     <div className="page-title"><span className="eyebrow">CHECKOUT</span><h1>Complete your order</h1><p>Pay with mobile money or card. Ikiguzi holds the payment until you confirm you have your items.</p></div>
@@ -450,16 +449,12 @@ export default function Checkout() {
             />
           </div>
           {user && !addressId && <label className="filter-check"><input type="checkbox" checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} /> Save this address to my account</label>}
-          <fieldset className="delivery-options">
-            <legend className="tiny">Delivery speed</legend>
-            <label><input type="radio" name="method" checked={form.method === "standard"} onChange={() => setForm((f) => ({ ...f, method: "standard" }))} /> Standard delivery <b>{feeLabel("standard")}</b></label>
-            <label><input type="radio" name="method" checked={form.method === "express"} onChange={() => setForm((f) => ({ ...f, method: "express" }))} /> Express delivery <b>{feeLabel("express")}</b></label>
-          </fieldset>
+          <div className="delivery-options"><span>Standard delivery</span> <b>{feeLabel("standard")}</b></div>
           {quoteError && <div className="form-alert error">{quoteError}</div>}
           {undeliverable && <div className="form-alert error">{undeliverableMessage} Choose another district, choose pickup, or remove those items.</div>}
           {quote?.deliverable && <div className="checkout-parcels">{quote.groups.map((g) => <div key={`${g.vendor}-${g.store}`}>
-            <span><b>{g.storeName}</b><small>{g.zoneName}{g.eta ? ` · ${g.eta}` : ""}{g.freeOverAmount && g.fee > 0 ? ` · free from ${money(g.freeOverAmount)}` : ""}</small>{g.message && <small className="checkout-parcel-note">{g.message}</small>}</span>
-            <strong>{g.fee === 0 ? "FREE" : money(g.fee)}</strong>
+            <span><b>{g.storeName}</b><small>{g.zoneName}{g.eta ? ` · ${g.eta}` : ""}</small>{g.message && <small className="checkout-parcel-note">{g.message}</small>}</span>
+            <strong>{money(g.fee)}</strong>
           </div>)}</div>}
           <p className="tiny">Delivery fees are set by each seller for your district; items from different stores ship separately. You give the courier your delivery code when it arrives.</p>
         </>}

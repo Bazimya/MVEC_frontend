@@ -70,6 +70,17 @@ export const STEP_LABEL = {
 // Button label for a step, worded for pickup orders where that differs.
 export const stepLabelFor = (order, status) =>
   (order?.shippingMethod === 'PICKUP' && status === 'READY_FOR_SHIPMENT' ? 'Ready for pickup' : STEP_LABEL[status]) || status;
+// A step can't be taken back, so the seller confirms it first (a mis-tap on
+// "Out for delivery" would tell the buyer it is on its way).
+const STEP_WARNING = {
+  PROCESSING: 'Start preparing this order?',
+  READY_FOR_SHIPMENT: 'Mark this order ready? A rider (or the buyer, for pickup) is told to come for it.',
+  SHIPPED: 'Mark this order shipped? The buyer is told it has left your store.',
+  OUT_FOR_DELIVERY: 'Mark this order out for delivery? The buyer is told it is on its way now.',
+  DELIVERED: 'Mark this order delivered?',
+};
+export const confirmStep = (order, status) =>
+  window.confirm(`${STEP_WARNING[status] || `${stepLabelFor(order, status)}?`}\n\nOnly continue if this has really happened. It can't be undone.`);
 export const ORDER_TABS = [
   ['all', 'All', null],
   ['new', 'New', ['PENDING', 'CONFIRMED']],

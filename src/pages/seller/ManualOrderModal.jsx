@@ -153,7 +153,7 @@ export default function ManualOrderModal({ onClose, onCreated }) {
       <section className="seller-zone-section">
         <h4>Delivery</h4>
         <div className="seller-segment" role="radiogroup" aria-label="Delivery method">
-          {[['STANDARD', 'Standard'], ['EXPRESS', 'Express'], ['PICKUP', 'Pickup']].map(([v, l]) =>
+          {[['STANDARD', 'Delivery'], ['PICKUP', 'Pickup']].map(([v, l]) =>
             <button type="button" role="radio" aria-checked={method === v} key={v} className={method === v ? 'active' : ''} onClick={() => setMethod(v)}>{l}</button>)}
         </div>
         {!isPickup && <div className="seller-form-grid">
