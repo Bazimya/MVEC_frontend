@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Storefront from '../components/Storefront';
 import ProductImage from '../components/ProductImage';
 import { HeroSlide } from '../components/HeroBanner';
+import BannerAdsPanel from '../components/BannerAdsPanel';
 import { useAuth } from '../context/AuthContext';
 import { adBookingsApi } from '../API/adBookings';
 import { paymentsApi } from '../API/payments';
@@ -11,7 +12,7 @@ import { productsApi } from '../API/products';
 import { suppliersApi } from '../API/suppliers';
 import { extractErrorMessage } from '../API/client';
 import { mapBackendProduct } from '../services/catalogApi';
-import { money, formatDate } from '../utils/format';
+import { money } from '../utils/format';
 import { isRwandanPhone } from '../utils/delivery';
 import { amountProblem, priceForSeconds, secondsForAmount } from '../utils/adPricing';
 
@@ -63,7 +64,6 @@ function Book({ rules }) {
       .then((list) => list.filter((p) => p.status === 'ACTIVE' && p.stockQuantity > 0)),
   });
   const { data: methods = [], isPending: methodsLoading, error: methodsError } = useQuery({ queryKey: ['ad-payment-methods'], queryFn: adBookingsApi.paymentMethods });
-  const { data: mine } = useQuery({ queryKey: ['ad-bookings', 'mine'], queryFn: adBookingsApi.mine, refetchInterval: 15000 });
 
   const [productId, setProductId] = useState('');
   const [title, setTitle] = useState('');
@@ -136,7 +136,7 @@ function Book({ rules }) {
 
   if (step === 'paying' && placed) return <>
     <PaymentStatus placed={placed} onAnother={startOver} />
-    <MyAds bookings={mine?.bookings || []} />
+    <BannerAdsPanel title="My banner ads" />
   </>;
 
   return <>
@@ -230,7 +230,7 @@ function Book({ rules }) {
         </div>
       </div>}
     </form>
-    <MyAds bookings={mine?.bookings || []} />
+    <BannerAdsPanel title="My banner ads" />
   </>;
 }
 
@@ -269,33 +269,5 @@ function PaymentStatus({ placed, onAnother }) {
       {!done && <button type="button" className="outline-btn" onClick={cancel}>Cancel this booking</button>}
       {done && <button type="button" className="gradient-btn" onClick={onAnother}>{status === 'SUCCESS' ? 'Book another ad' : 'Try again'}</button>}
     </div>
-  </div>;
-}
-
-function MyAds({ bookings }) {
-  const qc = useQueryClient();
-  const [error, setError] = useState('');
-  if (!bookings.length) return null;
-  const cancel = async (id) => {
-    setError('');
-    try { await adBookingsApi.cancel(id); qc.invalidateQueries({ queryKey: ['ad-bookings', 'mine'] }); } catch (err) { setError(extractErrorMessage(err)); }
-  };
-  return <div className="data-card">
-    <h3>My ads</h3>
-    {error && <div className="form-alert error">{error}</div>}
-    {bookings.map((b) => (
-      <div key={b.id} className="return-line ad-booking">
-        <ProductImage src={b.products?.[0]?.image} alt="" />
-        <div>
-          <b>{b.title || b.products?.[0]?.name} · {b.statusLabel}</b>
-          <small className="tiny">
-            {b.bookingNumber} · {b.displaySeconds ? `${b.displaySeconds} seconds · ` : ''}{money(b.amount)} · {b.paymentLabel}
-            {b.status === 'LIVE' ? ` · live until ${formatDate(b.endsAt)}` : ''}
-          </small>
-          {b.status === 'REJECTED' && <small className="tiny">Reason: {b.rejectionReason}. Refunded to {b.payerPhone || 'the paying number'}.</small>}
-        </div>
-        {b.status === 'AWAITING_PAYMENT' && <button type="button" className="outline-btn compact-btn" onClick={() => cancel(b.id)}>Cancel</button>}
-      </div>
-    ))}
   </div>;
 }

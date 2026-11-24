@@ -4,6 +4,10 @@ import Icon from './Icon';
 import ProductImage from './ProductImage';
 import { money } from '../utils/format';
 import { buyNowLink } from '../utils/shopping';
+import { adBookingsApi } from '../API/adBookings';
+
+// Bought banner ads have booking numbers like ADB-XXXX; other slides are not counted.
+const isBooking = (key) => /^ADB-/.test(String(key || ''));
 
 /** How long an ad without bought time (older bookings, sponsored campaigns) stays in the banner. */
 export const DEFAULT_SLIDE_SECONDS = 5;
@@ -14,7 +18,7 @@ export const DEFAULT_SLIDE_SECONDS = 5;
  * and two buttons that open this exact product. With `preview` the buttons do
  * nothing, so a seller can see their ad before paying.
  */
-export function HeroSlide({ slide, preview = false, advertiseLink, eager = false }) {
+export function HeroSlide({ slide, preview = false, advertiseLink, eager = false, onOpen }) {
   const { product } = slide;
   const Buy = preview ? 'span' : Link;
   const Details = preview ? 'span' : Link;
@@ -27,8 +31,8 @@ export function HeroSlide({ slide, preview = false, advertiseLink, eager = false
         {slide.description && <p className="hb-desc">{slide.description}</p>}
         {Number(product.price) > 0 && <p className="hb-price">{money(product.price)}{onSale && <del>{money(product.oldPrice)}</del>}</p>}
         <div className="hb-actions">
-          <Buy className="hb-btn primary" {...(preview ? { 'aria-disabled': true } : { to: buyNowLink(product) })}>Buy now</Buy>
-          <Details className="hb-btn" {...(preview ? { 'aria-disabled': true } : { to: `/product/${product.id}` })}>Description</Details>
+          <Buy className="hb-btn primary" {...(preview ? { 'aria-disabled': true } : { to: buyNowLink(product), onClick: onOpen })}>Buy now</Buy>
+          <Details className="hb-btn" {...(preview ? { 'aria-disabled': true } : { to: `/product/${product.id}`, onClick: onOpen })}>Description</Details>
         </div>
       </div>
       <div className="hb-media">
@@ -86,6 +90,13 @@ export default function HeroBanner({ slides, advertiseLink, empty = null }) {
     if (next) new Image().src = next;
   }, [active, count, signature]);
 
+  // Tell the server this ad is on screen (only while the tab is visible), for the seller's usage numbers.
+  const shownKey = count ? slides[active]?.key : null;
+  useEffect(() => {
+    if (hidden || !isBooking(shownKey)) return;
+    adBookingsApi.track(shownKey, 'view');
+  }, [shownKey, hidden]);
+
   if (!count) return empty;
   const go = (i) => { setIndex(((i % count) + count) % count); setTick((t) => t + 1); };
   const current = slides[active];
@@ -102,7 +113,7 @@ export default function HeroBanner({ slides, advertiseLink, empty = null }) {
         onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false); }}
       >
         <div key={current.key} role="group" aria-roledescription="slide" aria-label={`${active + 1} of ${count}`} className="hb-fade">
-          <HeroSlide slide={current} advertiseLink={advertiseLink} eager={active === 0} />
+          <HeroSlide slide={current} advertiseLink={advertiseLink} eager={active === 0} onOpen={isBooking(current.key) ? () => adBookingsApi.track(current.key, 'click') : undefined} />
         </div>
         {count > 1 && (
           <>

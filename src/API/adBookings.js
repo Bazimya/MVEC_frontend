@@ -13,6 +13,8 @@ export const adBookingsApi = {
   mine: () => client.get("/ad-bookings/mine").then(data),
   // { productId, title, description, seconds, paymentMethod, phoneNumber } -> { message, booking, paymentId, status }
   book: (payload) => client.post("/ad-bookings", payload).then(data),
+  // The banner reports a view or a click of a live ad (best effort: a failure never bothers the shopper).
+  track: (id, event) => client.post("/ad-bookings/track", { id, event }).catch(() => {}),
   cancel: (id) => client.post(`/ad-bookings/${id}/cancel`).then(data),
   forAdmin: (status) => client.get("/ad-bookings/admin", { params: status ? { status } : {} }).then((r) => r.data.bookings || []),
   approve: (id) => client.post(`/ad-bookings/${id}/approve`).then(data),

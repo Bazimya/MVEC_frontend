@@ -6,7 +6,7 @@ import { money } from '../utils/format';
 import { stageTime } from '../utils/tracker';
 import ProductImage from './ProductImage';
 
-const TABS = [['PAID', 'To approve'], ['LIVE', 'Live'], ['PAUSED', 'Paused'], ['ENDED', 'Ended'], ['REJECTED', 'Rejected'], ['', 'All']];
+const TABS = [['PAID', 'Waiting'], ['LIVE', 'Live'], ['PAUSED', 'Paused'], ['ENDED', 'Ended'], ['REJECTED', 'Rejected'], ['', 'All']];
 const METHOD = { MOMO: 'MTN Mobile Money', AIRTEL: 'Airtel Money' };
 
 /**
@@ -30,7 +30,7 @@ export default function AdBookingsReview() {
 
   return (
     <div className="data-card">
-      <div className="data-card-head"><div><h3>Home banner ads</h3><span>Sellers pay for seconds in the home banner. Only ads whose payment was confirmed by the payment provider appear here to approve. Approve to put one live; rejecting refunds the number that paid.</span></div></div>
+      <div className="data-card-head"><div><h3>Home banner ads</h3><span>Sellers pay for seconds in the home banner. An ad goes live by itself once the payment provider confirms the payment; “Waiting” only holds older flat-fee bookings. You can pause, remove, or reject and refund an ad.</span></div></div>
       <div className="seg-tabs">{TABS.map(([v, l]) => <button key={v} type="button" className={tab === v ? 'active' : ''} onClick={() => setTab(v)}>{l}</button>)}</div>
       {notice && <div className={`form-alert ${notice.ok ? 'success' : 'error'}`}>{notice.text}</div>}
       {error && <div className="form-error">{extractErrorMessage(error)}</div>}
@@ -47,7 +47,7 @@ export default function AdBookingsReview() {
             </small>
             <small className="tiny">
               {money(b.amount)}{b.displaySeconds ? ` for ${b.displaySeconds} seconds` : ' (older flat-fee booking)'} · {b.paymentLabel}
-              {b.paymentMethod ? ` · ${METHOD[b.paymentMethod] || b.paymentMethod}` : ''}{b.payerPhone ? ` · ${b.payerPhone}` : ''}{b.paidAt ? ` · paid ${stageTime(b.paidAt)}` : ''}
+              {b.paymentMethod ? ` · ${METHOD[b.paymentMethod] || b.paymentMethod}` : ''}{b.payerPhone ? ` · ${b.payerPhone}` : ''}{b.paidAt ? ` · paid ${stageTime(b.paidAt)}` : ''}{b.displaySeconds ? ` · ${b.views || 0} views, ${b.clicks || 0} presses` : ''}
             </small>
             {(b.startsAt || b.endsAt) && <small className="tiny">Shows {stageTime(b.startsAt)} → {stageTime(b.endsAt)}</small>}
             {b.rejectionReason && <small className="tiny">Note: {b.rejectionReason}</small>}
@@ -58,6 +58,7 @@ export default function AdBookingsReview() {
               <button type="button" className="outline-btn compact-btn" disabled={!!busy} onClick={() => ask('Why reject it? The seller sees this, and the money is refunded.', (why) => act(b.id, () => adBookingsApi.reject(b.id, why)))}>Reject &amp; refund</button>
             </>}
             {b.status === 'LIVE' && <button type="button" className="outline-btn compact-btn" disabled={!!busy} onClick={() => act(b.id, () => adBookingsApi.deactivate(b.id))}>Pause</button>}
+            {['LIVE', 'PAUSED'].includes(b.status) && b.displaySeconds && <button type="button" className="outline-btn compact-btn" disabled={!!busy} onClick={() => ask('Why take it down and refund? The seller sees this, and the money is refunded.', (why) => act(b.id, () => adBookingsApi.reject(b.id, why)))}>Refund &amp; take down</button>}
             {b.status === 'PAUSED' && <button type="button" className="gradient-btn compact-btn" disabled={!!busy} onClick={() => act(b.id, () => adBookingsApi.reactivate(b.id))}>Resume</button>}
             {['LIVE', 'PAUSED', 'ENDED'].includes(b.status) && <button type="button" className="outline-btn compact-btn" disabled={!!busy} onClick={() => ask('Why remove it? This takes the ad down for good. The record stays.', (why) => act(b.id, () => adBookingsApi.remove(b.id, why)))}>Remove</button>}
           </div>

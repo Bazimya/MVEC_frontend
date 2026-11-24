@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import Icon from '../components/Icon';
 import Pagination from '../components/Pagination';
@@ -34,7 +34,7 @@ import CategoriesPage, { buildCategoryTree } from './seller/CategoriesPage';
 import InventoryPage from './seller/InventoryPage';
 import OrdersPage from './seller/OrdersPage';
 import BulkUpload from './seller/BulkUpload';
-import { AdvertisementsPage, SubscriptionPage } from './seller/GrowthPages';
+import { SubscriptionPage } from './seller/GrowthPages';
 
 function Metric({label,value,icon,sub}){return <div className="metric"><div className="metric-icon"><Icon name={icon}/></div><div><span>{label}</span><strong>{value}</strong><small>{sub}</small></div></div>}
 
@@ -368,12 +368,14 @@ function ProductModule(){
 const SELLER_PAGES={
   stores:StorePage, categories:CategoriesPage, customers:CustomersPage, analytics:AnalyticsPage, reports:ReportsPage,
   transactions:TransactionsPage, promotions:PromotionsPage, shipping:ShippingPage, reviews:ReviewsPage,
-  team:TeamPage, settings:SettingsPage, advertisements:AdvertisementsPage, subscription:SubscriptionPage,
+  team:TeamPage, settings:SettingsPage, subscription:SubscriptionPage,
   products:ProductModule, inventory:InventoryPage, orders:OrdersPage, payouts:PayoutsPage, returns:SellerReturns,
 };
 
 export default function VendorDashboard(){
   const section=useLocation().pathname.split('/')[2]||'';
+  // Advertising is bought, and its results are shown, on the public /advertise page.
+  if(section==='advertisements')return <Navigate to="/advertise" replace/>;
   if(section==='delivery')return <DashboardLayout><DeliveryTracking role="vendor"/></DashboardLayout>;
   if(section==='notifications')return <DashboardLayout><NotificationPanel/></DashboardLayout>;
   const Page=SELLER_PAGES[section];

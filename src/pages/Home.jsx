@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import SponsoredProducts from "../components/SponsoredProducts";
 import { loadCatalog, mapBackendProduct } from "../services/catalogApi";
@@ -61,6 +61,18 @@ function WelcomeHero({ advertiseLink, sellerHome }) {
 
 export default function Home() {
   const { user } = useAuth();
+  const location = useLocation();
+
+  // Every visit to "/" (arriving from another page, or pressing the Ikiguzi logo while already
+  // here, scrolled or not) gets a new router key. Each new key flips between two identical
+  // animations, which restarts the entrance with no reload and no scroll observer.
+  const [entrance, setEntrance] = useState({ key: location.key, turn: 0 });
+  if (entrance.key !== location.key) setEntrance({ key: location.key, turn: entrance.turn + 1 });
+  useEffect(() => {
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: calm ? "auto" : "smooth" }); // so the whole entrance is in view
+  }, [location.key]);
+
   const [catalog, setCatalog] = useState({ products: [], categories: [], vendors: [] });
   const [status, setStatus] = useState("loading"); // loading | ready | error
 
@@ -124,7 +136,7 @@ export default function Home() {
 
   return (
     <Storefront>
-      <main className="home">
+      <main className={`home enter-${entrance.turn % 2}`}>
         <HeroBanner slides={slides} advertiseLink={advertiseLink} empty={<WelcomeHero advertiseLink={advertiseLink} sellerHome={sellerHome} />} />
 
         {status === "error" && (
