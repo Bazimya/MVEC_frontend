@@ -91,6 +91,9 @@ export function mapBackendCategory(c) {
     slug: c.slug || '',
     imageUrl: c.imageUrl || '',
     description: c.description || '',
+    // Sub-categories name their parent; productCount is live products in this category.
+    parentId: c.parentId ? String(c.parentId) : null,
+    productCount: Number(c.productCount) || 0,
   };
 }
 

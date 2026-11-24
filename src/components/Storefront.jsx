@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from './ThemeToggle';
@@ -10,6 +10,7 @@ import { notificationsApi } from '../API/notifications';
 import ProductImage from './ProductImage';
 import { money } from '../utils/format';
 import TestModeBanner from './TestModeBanner';
+import { CategoriesAccordion, CategoriesDropdown, useNavCategories } from './CategoriesMenu';
 
 const DASHBOARD_BY_ROLE = { vendor: '/vendor', supplier: '/supplier', affiliate: '/affiliate', delivery: '/delivery', super_admin: '/admin' };
 const NOTIFICATIONS_BY_ROLE = { vendor: '/vendor/notifications', supplier: '/supplier/notifications', affiliate: '/affiliate/notifications', delivery: '/delivery/notifications', super_admin: '/admin/notifications' };
@@ -28,6 +29,7 @@ export default function Storefront({ children }) {
   const [catalog, setCatalog] = useState({ categories: [], products: [], vendors: [] });
   const [unread, setUnread] = useState(0);
   const searchRef = useRef(null);
+  const categoryMenu = useNavCategories();
 
   useEffect(() => {
     let mounted = true;
@@ -71,7 +73,9 @@ export default function Storefront({ children }) {
   const dashboard = DASHBOARD_BY_ROLE[user?.role];
   const notificationPath = NOTIFICATIONS_BY_ROLE[user?.role] || '/buyer/notifications';
   const accountPath = dashboard || '/profile';
+  const sellerHome = ['vendor', 'supplier', 'super_admin'].includes(user?.role) ? dashboard : null; // where a seller's own pages live
   const links = [['/', t('home')], ['/shop', t('shop')], ['/deals', t('deals')], ['/vendors', t('vendors')], ['/buyer/recommendations', t('forYou')]];
+  const activeCategory = location.pathname === '/shop' ? new URLSearchParams(location.search).get('category') || '' : '';
   const isActive = (to) => (to.includes('?') ? `${location.pathname}${location.search}` === to : location.pathname === to && !location.search.includes('deal='));
 
   return <div className="site">
@@ -83,7 +87,10 @@ export default function Storefront({ children }) {
         </button>
         <Link to="/" className="site-logo">Ikiguzi</Link>
         <nav className="site-nav" aria-label="Main">
-          {links.map(([to, label]) => <Link key={to} to={to} className={isActive(to) ? 'active' : undefined} aria-current={isActive(to) ? 'page' : undefined}>{label}</Link>)}
+          {links.map(([to, label]) => <Fragment key={to}>
+            <Link to={to} className={isActive(to) ? 'active' : undefined} aria-current={isActive(to) ? 'page' : undefined}>{label}</Link>
+            {to === '/shop' && <CategoriesDropdown active={activeCategory} menu={categoryMenu} closeSignal={`${location.pathname}${location.search}`} />}
+          </Fragment>)}
         </nav>
         <div className={'site-search' + (searchOpen ? ' open' : '')} ref={searchRef}>
           <form role="search" onSubmit={(e) => { e.preventDefault(); submitSearch(); }}>
@@ -117,16 +124,15 @@ export default function Storefront({ children }) {
       </div>
       {menuOpen && <div className="site-drawer">
         <nav aria-label="Menu">
-          {links.map(([to, label]) => <Link key={to} to={to}>{label}</Link>)}
+          {links.map(([to, label]) => <Fragment key={to}>
+            <Link to={to}>{label}</Link>
+            {to === '/shop' && <CategoriesAccordion active={activeCategory} menu={categoryMenu} />}
+          </Fragment>)}
           <Link to="/orders">{t('orders')}</Link>
           {user && <Link to="/account/returns">Returns</Link>}
           {user && <Link to={accountPath}>{dashboard ? 'Dashboard' : 'My account'}</Link>}
           {user && <button type="button" onClick={() => { logout(); navigate('/'); }}>Sign out</button>}
         </nav>
-        {catalog.categories.length > 0 && <div className="site-drawer-cats">
-          <h4>{t('allCategories')}</h4>
-          {catalog.categories.map((c) => <Link key={c} to={`/shop?category=${encodeURIComponent(c)}`}>{c}</Link>)}
-        </div>}
       </div>}
     </header>
     {cartNotice && <div className="form-alert error site-notice" role="alert">{cartNotice} <button type="button" className="text-btn" onClick={dismissCartNotice}>Dismiss</button></div>}
@@ -138,18 +144,43 @@ export default function Storefront({ children }) {
         <li><Icon name="phone" /><span><b>Mobile money</b><small>MTN and Airtel</small></span></li>
         <li><Icon name="support" /><span><b>Help when you need it</b><small><Link to="/buyer/support">Contact support</Link></small></span></li>
       </ul>
-      <div className="site-footer-bar">
-        <Link to="/" className="site-logo">Ikiguzi</Link>
-        <nav aria-label="Footer">
-          <Link to="/shop">Shop</Link>
-          <Link to="/vendors">Stores</Link>
-          <Link to="/orders">Orders</Link>
-          <Link to="/account/returns">Returns</Link>
+      <div className="site-footer-main">
+        <div className="site-footer-grid">
+          <section className="site-footer-about" id="site-about" aria-labelledby="footer-about">
+            <Link to="/" className="site-logo">Ikiguzi</Link>
+            <h3 id="footer-about">About Ikiguzi</h3>
+            <p>Ikiguzi is Rwanda&apos;s marketplace. Buyers pay with mobile money, and we hold the payment safely until the order arrives, so the seller is paid only after delivery.</p>
+            <p><b>Our mission:</b> to make buying and selling in Rwanda simple, safe and local, with trusted sellers and riders who bring your order to your door.</p>
+          </section>
+          <nav aria-label="Customer service">
+            <h3>Customer Service</h3>
+            <Link to="/buyer/support">Contact Us</Link>
+            <Link to="/buyer/support">Help Center &amp; FAQs</Link>
+            <Link to="/orders">Order Tracking</Link>
+            <Link to="/account/returns">Returns &amp; Refunds</Link>
+          </nav>
+          <nav aria-label="For sellers">
+            <h3>For Sellers</h3>
+            {!sellerHome && <Link to="/signup" state={{ role: 'vendor' }}>Become a Seller</Link>}
+            <Link to={sellerHome || '/vendor'}>Seller Dashboard</Link>
+            <Link to="/advertise">Advertise Your Products</Link>
+            <Link to={sellerHome && sellerHome !== '/admin' ? `${sellerHome}/support` : '/vendor/support'}>Seller Support</Link>
+          </nav>
+          <nav aria-label="Quick links">
+            <h3>Quick Links</h3>
+            <Link to="/">Home</Link>
+            <Link to="/shop" title="Filter the shop by category">Categories</Link>
+            <Link to="/shop">All Products</Link>
+            <Link to="/deals">Deals</Link>
+            <Link to="/vendors">Stores</Link>
+            <a href="#site-about">About Us</a>
+          </nav>
+        </div>
+        <div className="site-footer-bottom">
+          <small>© {new Date().getFullYear()} Ikiguzi. All rights reserved.</small>
+          <small className="site-footer-pay">Pay with MTN Mobile Money or Airtel Money</small>
           {user && <button type="button" className="link-btn" onClick={() => { logout(); navigate('/'); }}>Sign out</button>}
-          <Link to="/buyer/support">{t('help')}</Link>
-          {dashboard ? <Link to={dashboard}>Dashboard</Link> : <Link to="/signup" state={{ role: 'vendor' }}>{t('becomeVendor')}</Link>}
-        </nav>
-        <small>© {new Date().getFullYear()} Ikiguzi</small>
+        </div>
       </div>
     </footer>
   </div>;

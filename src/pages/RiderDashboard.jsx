@@ -9,6 +9,8 @@ import LiveMap from "../components/LiveMap";
 import { parcelPoints, minutesLeft, kmLeft } from "../utils/liveTracking";
 import AutoPayoutCard from "../components/AutoPayoutCard";
 import DistrictsPicker from "../components/DistrictsPicker";
+import OrderTracker from "../components/OrderTracker";
+import { STAGE_ICON, fromDoneFlags } from "../utils/tracker";
 
 const BOARD = ["rider", "board"];
 const STEP_LABEL = { PICKED_UP: "I have the parcel", OUT_FOR_DELIVERY: "Start the delivery" };
@@ -197,13 +199,16 @@ function Offer({ id, board, refresh }) {
 /** The parcel's story, from order placed to delivered: the seller's steps first, then the rider's. */
 function Progress({ job }) {
   if (!job.progress?.length) return null;
-  const at = (d) => d && new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const { current, finished } = fromDoneFlags(job.progress);
   return (
     <div className="data-card">
       <h3>Order progress</h3>
-      <ol className="rider-progress">
-        {job.progress.map((p) => <li key={p.key} className={p.done ? "done" : ""}><span>{p.label}</span>{p.done && p.at && <small className="tiny">{at(p.at)}</small>}</li>)}
-      </ol>
+      <OrderTracker
+        label="Order progress"
+        current={current}
+        finished={finished}
+        steps={job.progress.map((p) => ({ key: p.key, label: p.label, icon: STAGE_ICON[p.key], at: p.done ? p.at : null }))}
+      />
     </div>
   );
 }

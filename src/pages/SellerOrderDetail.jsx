@@ -9,6 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import { money, dateDMY, personName, titleCase, parsePercent, sellerNextStatuses, canRecordCash, stepLabelFor, confirmStep, orderFlowFor, flowIndexOf, flowStepLabel, StatusPill, FormModal } from './seller/shared';
 import ProductImage from '../components/ProductImage';
 import LiveTracking from '../components/LiveTracking';
+import OrderTracker from '../components/OrderTracker';
+import { STAGE_ICON } from '../utils/tracker';
 
 const idOf = v => String(v?._id || v?.id || v || '');
 
@@ -133,13 +135,17 @@ export default function SellerOrderDetail() {
       <section className="data-card">
         <div className="data-card-head"><div><h3>Order progress</h3><span>From placement to delivery</span></div></div>
         {offFlow && <p className="tiny">This order is <b>{titleCase(order.orderStatus).toLowerCase()}</b>.</p>}
-        <div className="timeline">
-          {flow.map((s, i) => (
-            <div className={'timeline-item ' + (!offFlow && i <= flowIndex ? 'done' : '')} key={s}>
-              <i /><div><b>{flowStepLabel(order, s)}</b><small>{!offFlow && i === flowIndex ? 'Current status' : !offFlow && i < flowIndex ? 'Completed' : 'Upcoming'}</small></div>
-            </div>
-          ))}
-        </div>
+        <OrderTracker
+          label="Order progress"
+          current={flowIndex}
+          finished={!offFlow && flowIndex === flow.length - 1}
+          steps={flow.map((s) => ({
+            key: s,
+            label: flowStepLabel(order, s),
+            icon: STAGE_ICON[s],
+            at: { PENDING: order.createdAt, CONFIRMED: order.paidAt, SHIPPED: order.shippedAt, DELIVERED: order.deliveredAt }[s] || null,
+          }))}
+        />
       </section>
       {cancelling && <FormModal title={`Cancel ${order.orderNumber}?`}
         subtitle={order.paymentStatus === 'PAID' && !order.paidOffline ? 'The buyer paid through Ikiguzi: they get a full refund, and your items go back into stock.' : 'Your items go back into stock.'}

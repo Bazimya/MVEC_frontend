@@ -11,14 +11,16 @@ import { extractErrorMessage } from "../API/client";
 import { money, formatDate } from "../utils/format";
 import { buyerStatus, canCancel, countdown, isAwaitingPayment, paidCancelRemaining } from "../utils/orders";
 import LiveTracking from "../components/LiveTracking";
+import OrderTracker from "../components/OrderTracker";
+import { STAGE_ICON } from "../utils/tracker";
 
 // Who moves the order at each step, so the buyer knows what to expect.
 const STEPS = [
-  { label: "Order placed", by: "You", statuses: ["PENDING"], text: "The items are reserved for you for 30 minutes while you pay." },
-  { label: "Payment confirmed", by: "Payment provider · automatic", statuses: ["CONFIRMED"], text: "Mobile money, card or K-Pay confirms your payment. Ikiguzi holds the money; the seller is not paid yet." },
-  { label: "Preparing & packing", by: "Seller", statuses: ["PROCESSING", "READY_FOR_SHIPMENT"], text: "The seller prepares your items and marks them packed." },
-  { label: "On the way", by: "Seller, then courier", statuses: ["SHIPPED", "OUT_FOR_DELIVERY"], text: "The seller hands the parcel over; the courier marks it out for delivery." },
-  { label: "Delivered", by: "You, with your code", statuses: ["DELIVERED", "COMPLETED"], text: "When the items are in your hands, give the courier or seller your 6-digit code. That confirms delivery and releases the payment to the seller." },
+  { label: "Order placed", by: "You", icon: "PENDING", at: "createdAt", statuses: ["PENDING"], text: "The items are reserved for you for 30 minutes while you pay." },
+  { label: "Payment confirmed", by: "Payment provider · automatic", icon: "CONFIRMED", at: "paidAt", statuses: ["CONFIRMED"], text: "Mobile money, card or K-Pay confirms your payment. Ikiguzi holds the money; the seller is not paid yet." },
+  { label: "Preparing & packing", by: "Seller", icon: "PROCESSING", statuses: ["PROCESSING", "READY_FOR_SHIPMENT"], text: "The seller prepares your items and marks them packed." },
+  { label: "On the way", by: "Seller, then courier", icon: "SHIPPED", at: "shippedAt", statuses: ["SHIPPED", "OUT_FOR_DELIVERY"], text: "The seller hands the parcel over; the courier marks it out for delivery." },
+  { label: "Delivered", by: "You, with your code", icon: "DELIVERED", at: "deliveredAt", statuses: ["DELIVERED", "COMPLETED"], text: "When the items are in your hands, give the courier or seller your 6-digit code. That confirms delivery and releases the payment to the seller." },
 ];
 const METHOD_LABEL = { MOMO: "MTN MoMo", AIRTEL: "Airtel Money", CARD: "card", SPENN: "SPENN", CASH_ON_DELIVERY: "cash on delivery" };
 const paidWith = (order) => {
@@ -267,17 +269,20 @@ export default function OrderDetails() {
     {!cancelled && (
       <section className="data-card">
         <div className="data-card-head"><div><h3>Progress</h3><span>Who does what at each step. You get a notification every time it moves.</span></div></div>
-        <div className="timeline order-progress">
-          {STEPS.map((step, i) => (
-            <div className={`${i <= idx ? "timeline-item done" : "timeline-item"}${i === idx ? " current" : ""}`} key={step.label}>
-              <i /><div>
-                <b>{step.label}</b>
-                <small className="step-by">{step.by}{i === idx ? ` · ${SUBSTATUS[order.orderStatus] || "Current step"}` : i < idx ? " · Done" : ""}</small>
-                {i >= idx && <small>{step.text}</small>}
-              </div>
-            </div>
-          ))}
-        </div>
+        <OrderTracker
+          label="Order progress"
+          current={idx}
+          finished={idx === STEPS.length - 1}
+          steps={STEPS.map((step, i) => ({
+            key: step.label,
+            label: step.label,
+            icon: STAGE_ICON[step.icon],
+            at: step.at ? order[step.at] : null,
+            // Who acts: what is happening now, "Done", or who moves it next.
+            sub: i === idx && idx < STEPS.length - 1 ? (SUBSTATUS[order.orderStatus] || "Current step") : i < idx || idx === STEPS.length - 1 ? (order[step.at] ? "" : "Done") : step.by,
+          }))}
+        />
+        {idx < STEPS.length - 1 && <p className="tiny otrack-note"><b>{STEPS[idx].by}:</b> {STEPS[idx].text}</p>}
       </section>
     )}
 

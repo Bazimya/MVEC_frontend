@@ -1,18 +1,18 @@
 import { Link } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import SponsoredProducts from "../components/SponsoredProducts";
 import { loadCatalog, mapBackendProduct } from "../services/catalogApi";
 import { advertisementsApi } from "../API/advertisements";
 import Storefront from "../components/Storefront";
+import HeroBanner from "../components/HeroBanner";
 import Icon from "../components/Icon";
 import ProductImage from "../components/ProductImage";
 import ProductCard from "../components/ProductCard";
 import { useAuth } from "../context/AuthContext";
-import { money, ratingLabel } from "../utils/format";
+import { ratingLabel } from "../utils/format";
 
 const BEST_SELLERS = 8;
 const NEW_ARRIVALS = 4;
-const SLIDE_MS = 3000; // the hero changes product every 3 seconds
 
 function SkeletonGrid({ count = 4 }) {
   return (
@@ -31,17 +31,8 @@ function SectionHead({ title, to, label = "View all" }) {
   );
 }
 
-/** The hero: sponsored products take turns; with none live, a stand-in photo offers the space. */
-function Hero({ slides, advertiseLink, sellerHome }) {
-  const [index, setIndex] = useState(0);
-  const count = slides.length;
-  useEffect(() => {
-    if (count < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
-    const timer = setInterval(() => setIndex((i) => (i + 1) % count), SLIDE_MS);
-    return () => clearInterval(timer);
-  }, [count]);
-  const current = slides[index % (count || 1)];
-
+/** Shown while no paid ad is live: the marketplace pitch, and an invitation to advertise. */
+function WelcomeHero({ advertiseLink, sellerHome }) {
   return (
     <section className="home-hero">
       <div className="home-hero-copy">
@@ -55,35 +46,14 @@ function Hero({ slides, advertiseLink, sellerHome }) {
         </div>
       </div>
       <div className="home-hero-media">
-        {current ? (
-          <Link to={`/product/${current.id}`} className="home-hero-slide" key={current.id}>
-            <ProductImage src={current.image} alt={current.name} />
-            <span className="home-hero-tag">
-              <small>Sponsored</small>
-              <b>{current.name}</b>
-              <span>{money(current.price)}</span>
-            </span>
+        <div className="home-hero-slide">
+          <img src="/hero-standin.jpg" alt="Shopping bags" loading="eager" />
+          <Link to={advertiseLink} className="home-hero-tag">
+            <small>Your products here</small>
+            <b>Advertise on Ikiguzi</b>
+            <span>Get started <Icon name="arrow" size={14} /></span>
           </Link>
-        ) : (
-          <div className="home-hero-slide">
-            <img src="/hero-standin.jpg" alt="Shopping bags" loading="eager" />
-            <Link to={advertiseLink} className="home-hero-tag">
-              <small>Your products here</small>
-              <b>Advertise on Ikiguzi</b>
-              <span>Get started <Icon name="arrow" size={14} /></span>
-            </Link>
-          </div>
-        )}
-        {current && <Link to={advertiseLink} className="home-hero-advertise">Advertise here</Link>}
-        {count > 1 && (
-          <>
-            <button type="button" className="home-hero-arrow prev" onClick={() => setIndex((index - 1 + count) % count)} aria-label="Previous"><Icon name="left" /></button>
-            <button type="button" className="home-hero-arrow next" onClick={() => setIndex((index + 1) % count)} aria-label="Next"><Icon name="right" /></button>
-            <div className="home-hero-dots">
-              {slides.map((p, i) => <button type="button" key={p.id} className={i === index ? "on" : ""} onClick={() => setIndex(i)} aria-label={`Show ${p.name}`} />)}
-            </div>
-          </>
-        )}
+        </div>
       </div>
     </section>
   );
@@ -109,10 +79,25 @@ export default function Home() {
   useEffect(() => {
     let mounted = true;
     const toProducts = (ads) => ads.map((ad) => mapBackendProduct(ad.product)).filter((p) => p && p.id);
-    advertisementsApi.getLive("HOMEPAGE_HERO", 6).then((ads) => mounted && setHeroAds(toProducts(ads))).catch(() => {});
+    advertisementsApi.getLive("HOMEPAGE_HERO", 12).then((ads) => mounted && setHeroAds(ads)).catch(() => {});
     advertisementsApi.getLive("FEATURED", 12).then((ads) => mounted && setFeaturedAds(toProducts(ads))).catch(() => {});
     return () => { mounted = false; };
   }, []);
+
+  // Each live ad becomes a slide with its own title, description and bought seconds.
+  // The server decides which ads are live and for how long; the page only shows them.
+  const slides = useMemo(() => heroAds.map((ad) => {
+    const product = mapBackendProduct(ad.product);
+    if (!product?.id) return null;
+    const seconds = Number(ad.displaySeconds);
+    return {
+      key: ad.id || product.id,
+      product,
+      title: ad.title || product.name,
+      description: ad.description || "",
+      seconds: seconds > 0 ? seconds : null,
+    };
+  }).filter(Boolean), [heroAds]);
 
   useEffect(() => {
     let mounted = true;
@@ -131,12 +116,6 @@ export default function Home() {
   // The catalog comes newest first; new arrivals skip what Best sellers already shows.
   const newArrivals = products.filter((p) => !popular.includes(p)).slice(0, NEW_ARRIVALS);
   const deals = products.filter((p) => p.oldPrice > p.price && p.stock > 0);
-  // Each category circle shows its own picture, or one of its products.
-  const categories = (catalog.categories || [])
-    .map((c) => (typeof c === "string" ? { name: c } : c))
-    .map((c) => ({ ...c, image: c.imageUrl || products.find((p) => p.category === c.name)?.image }))
-    .filter((c) => c.name && products.some((p) => p.category === c.name))
-    .slice(0, 8);
   const dealImage = (deals[0] || products[0])?.image;
   const sellImage = (products[1] || products[0])?.image;
   // One page for everyone: it signs people in, explains who can advertise, or books the ad.
@@ -146,27 +125,13 @@ export default function Home() {
   return (
     <Storefront>
       <main className="home">
-        <Hero slides={heroAds.slice(0, 6)} advertiseLink={advertiseLink} sellerHome={sellerHome} />
+        <HeroBanner slides={slides} advertiseLink={advertiseLink} empty={<WelcomeHero advertiseLink={advertiseLink} sellerHome={sellerHome} />} />
 
         {status === "error" && (
           <div className="form-alert error" role="alert">
             We could not load the marketplace right now. Check your connection and try again.{" "}
             <button type="button" className="text-btn" onClick={() => load(true)}>Retry</button>
           </div>
-        )}
-
-        {categories.length > 0 && (
-          <section className="home-section">
-            <SectionHead title="Shop by category" to="/shop" />
-            <div className="home-cats">
-              {categories.map((c) => (
-                <Link key={c.name} to={`/shop?category=${encodeURIComponent(c.name)}`} className="home-cat">
-                  <span>{c.image ? <ProductImage src={c.image} alt="" /> : c.name[0]}</span>
-                  <b>{c.name}</b>
-                </Link>
-              ))}
-            </div>
-          </section>
         )}
 
         <section className="home-section">

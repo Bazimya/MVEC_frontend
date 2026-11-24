@@ -6,6 +6,7 @@ import Icon from '../components/Icon';
 import Pagination from '../components/Pagination';
 import SponsoredProducts from '../components/SponsoredProducts';
 import ProductCard from '../components/ProductCard';
+import { namesWithin } from '../utils/categories';
 
 const PER_PAGE = 12;
 
@@ -26,6 +27,7 @@ export default function Shop() {
 
   const [catalog, setCatalog] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [categoryList, setCategoryList] = useState([]); // with parent ids, so a main category includes its sub-categories
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [searchText, setSearchText] = useState(q);
@@ -40,6 +42,7 @@ export default function Shop() {
       if (!mounted) return;
       setCatalog(res.products || []);
       setCategories((res.categories || []).map((c) => (typeof c === 'string' ? c : c.name)).filter(Boolean));
+      setCategoryList((res.categories || []).filter((c) => c && typeof c === 'object'));
       setLoadError(Boolean(res.error));
     }).finally(() => mounted && setLoading(false));
     return () => { mounted = false; };
@@ -66,8 +69,9 @@ export default function Shop() {
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
+    const inCategory = cat ? namesWithin(categoryList, cat) : null;
     const list = catalog.filter((p) =>
-      (!cat || p.category === cat) &&
+      (!inCategory || inCategory.has(p.category)) &&
       (!dealsOnly || p.oldPrice > p.price) &&
       (!inStockOnly || p.stock > 0) &&
       (!needle || `${p.name} ${p.brand} ${p.vendor} ${p.sku} ${p.category} ${p.description}`.toLowerCase().includes(needle)) &&
@@ -82,7 +86,7 @@ export default function Shop() {
     // "newest" keeps the API order (newest first); sold-out items go last.
     const sorted = sorters[sort] ? [...list].sort(sorters[sort]) : list;
     return [...sorted.filter((p) => p.stock > 0), ...sorted.filter((p) => !(p.stock > 0))];
-  }, [q, cat, dealsOnly, inStockOnly, sort, minPrice, maxPrice, catalog]);
+  }, [q, cat, categoryList, dealsOnly, inStockOnly, sort, minPrice, maxPrice, catalog]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const currentPage = Math.min(page, pages);
