@@ -12,7 +12,7 @@ import { money } from '../utils/format';
 import TestModeBanner from './TestModeBanner';
 
 const DASHBOARD_BY_ROLE = { vendor: '/vendor', supplier: '/supplier', affiliate: '/affiliate', delivery: '/delivery', super_admin: '/admin' };
-const NOTIFICATIONS_BY_ROLE = { vendor: '/vendor/notifications', supplier: '/supplier/notifications', affiliate: '/affiliate/notifications', super_admin: '/admin/notifications' };
+const NOTIFICATIONS_BY_ROLE = { vendor: '/vendor/notifications', supplier: '/supplier/notifications', affiliate: '/affiliate/notifications', delivery: '/delivery/notifications', super_admin: '/admin/notifications' };
 
 /** The shop pages' frame: one header row, the page, a short footer. */
 export default function Storefront({ children }) {

@@ -54,7 +54,7 @@ export const supplierNav = [['/supplier','Dashboard','grid'],['/supplier/stores'
 
 export const affiliateNav = [['/affiliate','Dashboard','grid'],['/affiliate/messages','Messages','users'],['/affiliate/products','Promote Products','box'],['/affiliate/links','My Links','tag'],['/affiliate/commissions','Commissions','chart'],['/affiliate/wallet','Wallet','wallet'],['/affiliate/withdrawals','Withdrawals','wallet'],['/affiliate/notifications','Notifications','bell'],['/affiliate/profile','Profile','user'],['/affiliate/support','Ikiguzi Support','bell']];
 
-export const deliveryNav = [['/delivery','Dashboard','grid'],['/delivery/trip','Current delivery','box'],['/delivery/earnings','Earnings','wallet'],['/delivery/messages','Messages','users'],['/delivery/support','Ikiguzi Support','bell'],['/profile','My Account','user']];
+export const deliveryNav = [['/delivery','Dashboard','grid'],['/delivery/trip','Current delivery','box'],['/delivery/earnings','Earnings','wallet'],['/delivery/messages','Messages','users'],['/delivery/notifications','Notifications','bell'],['/delivery/support','Ikiguzi Support','bell'],['/profile','My Account','user']];
 
 // Compact 4-icon "primary" set shown directly in the mobile bottom bar for
 // each dashboard role, before the 5th "More" icon. Kept short and to the
@@ -103,7 +103,7 @@ export const affiliateNavGroups = [
 export const deliveryNavGroups = [
   { label: 'Overview', items: [['/delivery','Dashboard','grid']] },
   { label: 'Work', items: [['/delivery/trip','Current delivery','box'],['/delivery/earnings','Earnings','wallet']] },
-  { label: 'Support', items: [['/delivery/messages','Messages','users'],['/delivery/support','Ikiguzi Support','bell'],['/profile','My Account','user']] },
+  { label: 'Support', items: [['/delivery/messages','Messages','users'],['/delivery/notifications','Notifications','bell'],['/delivery/support','Ikiguzi Support','bell'],['/profile','My Account','user']] },
 ];
 
 // ─── PERMISSION-AWARE NAVIGATION ─────────────────────────────────────────────

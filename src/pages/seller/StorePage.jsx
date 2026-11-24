@@ -156,7 +156,21 @@ export default function StorePage({ api = VENDOR_API, copy: copyOverride }) {
     { key: 'productCount', label: 'Products', render: s => s.productCount ?? 0 },
     { key: 'createdAt', label: 'Since', render: s => dateDMY(s.createdAt) },
     { key: 'status', label: 'Status', render: s => <StatusPill value={s.status} /> },
+    // Ikiguzi riders: the one switch sellers need to find, so it sits on the list.
+    { key: 'riderDelivery', label: 'Ikiguzi riders', render: s => {
+      const pinned = s.pickupLat != null;
+      if (!pinned) return <button type="button" className="table-action-btn primary" disabled={busyId === s._id} onClick={() => setModal({ store: s })}>Set pickup pin</button>;
+      return <div className="seller-rider-cell">
+        <em className={`status ${s.riderDelivery ? 'active' : 'warning'}`}>{s.riderDelivery ? 'On' : 'Off'}</em>
+        <button type="button" className={`table-action-btn${s.riderDelivery ? '' : ' primary'}`} disabled={busyId === s._id}
+          onClick={() => (s.riderDelivery ? window.confirm(`Turn off Ikiguzi riders for ${s.storeName}? Its parcels will use your own delivery zones and you deliver them yourself.`) : true)
+            && act(s, async () => { await api.update(s._id, { riderDelivery: !s.riderDelivery }); return { message: s.riderDelivery ? `Riders are off for ${s.storeName}. You deliver its parcels.` : `Riders are on for ${s.storeName}. Paid orders are offered to the nearest rider.` }; })}>
+          {s.riderDelivery ? 'Turn off' : 'Turn on riders'}
+        </button>
+      </div>;
+    } },
   ];
+  const ridersOff = stores.filter(s => !s.riderDelivery);
   const actions = s => <span className="row-actions">
     <button type="button" title="Edit store" disabled={busyId === s._id} onClick={() => setModal({ store: s })}><Icon name="edit" /></button>
     {!s.isPrimary && <button type="button" title="Make primary store" disabled={busyId === s._id}
@@ -176,6 +190,10 @@ export default function StorePage({ api = VENDOR_API, copy: copyOverride }) {
     {loading && !data && <Loading />}
     {error && <div className="form-error">{error}</div>}
     {data && !stores.length && <EmptyState title="You don't have a store yet" text={copy.emptyText} action={registerBtn} />}
+    {ridersOff.length > 0 && <div className="form-alert" role="note">
+      <b>Ikiguzi riders are off for {ridersOff.length === 1 ? ridersOff[0].storeName : `${ridersOff.length} of your stores`}.</b>{' '}
+      Orders from {ridersOff.length === 1 ? 'it' : 'them'} are not offered to riders, so you deliver them yourself. {ridersOff.some(s => s.pickupLat == null) ? 'Set the store\'s pickup pin, then turn riders on in the "Ikiguzi riders" column.' : 'Turn riders on in the "Ikiguzi riders" column.'}
+    </div>}
     {stores.length > 0 && <div className="data-card">
       <div className="data-card-head"><div><h3>Your stores</h3><span>{stores.length}{maxStores ? ` of ${maxStores}` : ''} stores</span></div></div>
       <SmartTable columns={columns} rows={stores} rowKey={s => s._id} actions={actions} searchPlaceholder="Search stores…" exportName="mvec-stores" />

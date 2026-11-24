@@ -375,6 +375,16 @@ export default function App() {
       />
       <Route path="/track/:code" element={<AffiliateRedirect />} />
       <Route
+        path="/delivery/notifications"
+        element={
+          <RequireAuth roles={["delivery"]}>
+            <DashboardLayout>
+              <NotificationPanel />
+            </DashboardLayout>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/delivery/messages"
         element={
           <RequireAuth roles={["delivery"]}>
