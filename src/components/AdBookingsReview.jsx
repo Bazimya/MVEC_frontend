@@ -46,7 +46,7 @@ export default function AdBookingsReview() {
               {b.bookingNumber} · Seller: {b.sellerName || 'unknown'} · Product: {b.products?.map((p) => p.name).join(', ')}
             </small>
             <small className="tiny">
-              {money(b.amount)}{b.displaySeconds ? ` for ${b.displaySeconds} seconds` : ' (older flat-fee booking)'} · {b.paymentLabel}
+              {money(b.amount)}{b.days ? ` for ${b.days} days` : ''}{b.displaySeconds ? '' : ' (older booking)'} · {b.paymentLabel}
               {b.paymentMethod ? ` · ${METHOD[b.paymentMethod] || b.paymentMethod}` : ''}{b.payerPhone ? ` · ${b.payerPhone}` : ''}{b.paidAt ? ` · paid ${stageTime(b.paidAt)}` : ''}{b.displaySeconds ? ` · ${b.views || 0} views, ${b.clicks || 0} presses` : ''}
             </small>
             {(b.startsAt || b.endsAt) && <small className="tiny">Shows {stageTime(b.startsAt)} → {stageTime(b.endsAt)}</small>}

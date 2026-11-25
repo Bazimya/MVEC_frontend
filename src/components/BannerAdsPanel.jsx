@@ -18,13 +18,13 @@ const Fact = ({ label, value, hint }) => <div className="bap-fact"><span>{label}
 function Story({ b }) {
   if (b.status === 'LIVE') {
     if (b.usage?.showing === false) return <p className="bap-note warn">Your ad is live, but it is not on the banner right now because the product is out of stock or off sale. It comes back as soon as the product is on sale again.</p>;
-    return <p className="bap-note">Your ad is on the Ikiguzi home page banner right now. Every visitor who opens the home page sees it for {b.displaySeconds || b.usage?.secondsPerTurn} seconds each time the banner comes round to it.</p>;
+    return <p className="bap-note">Your ad is on the Ikiguzi home page banner right now. Every visitor who opens the home page sees it for {b.usage?.secondsPerTurn || 5} seconds each time the banner comes round to it.</p>;
   }
   const text = {
     AWAITING_PAYMENT: 'Waiting for your payment. Approve the prompt on your phone; the ad goes live as soon as the payment is confirmed.',
     PAID: 'Payment received. Your ad is going live now.',
     PAUSED: 'Ikiguzi has paused this ad, so it is off the banner for now. Contact support to ask why.',
-    ENDED: 'This ad finished its run. Buy more banner time any time to bring it back.',
+    ENDED: 'This ad finished its run. Book it again any time to bring it back.',
     REJECTED: `Ikiguzi did not approve this ad${b.rejectionReason ? `: ${b.rejectionReason}` : ''}. Your payment was refunded to ${b.payerPhone || 'the number that paid'}.`,
     CANCELLED: 'This booking was cancelled, so nothing was charged for it.',
     REMOVED: `Ikiguzi removed this ad${b.rejectionReason ? `: ${b.rejectionReason}` : ''}.`,
@@ -52,7 +52,7 @@ function AdCard({ b, onCancel, busy }) {
       <Story b={b} />
 
       {b.status === 'LIVE' && <div className="bap-facts">
-        <Fact label="Time on the banner" value={`${b.displaySeconds || u?.secondsPerTurn || '—'} seconds`} hint="each time it comes round" />
+        <Fact label="Time on the banner" value={`${u?.secondsPerTurn || 5} seconds`} hint="each time it comes round" />
         <Fact label="Place in the rotation" value={u ? `${u.position} of ${u.liveAds}` : '—'} hint={u ? (u.liveAds > 1 ? 'ads share the banner' : 'yours is the only ad') : 'not showing now'} />
         <Fact label="Share of banner time" value={u ? `${u.sharePercent}%` : '—'} hint={u ? `${u.secondsPerTurn} of ${u.cycleSeconds} seconds per round` : ''} />
         <Fact label="Runs until" value={stageTime(b.endsAt)} hint={b.daysLeft != null ? `${b.daysLeft} day${b.daysLeft === 1 ? '' : 's'} left` : ''} />
@@ -65,7 +65,7 @@ function AdCard({ b, onCancel, busy }) {
       </div>}
 
       <footer>
-        <span className="bap-pay">{money(b.amount)}{b.displaySeconds ? ` for ${b.displaySeconds} seconds` : ''} · {b.paymentLabel}{b.paymentMethod ? ` · ${b.paymentMethod === 'MOMO' ? 'MTN Mobile Money' : 'Airtel Money'}` : ''}</span>
+        <span className="bap-pay">{money(b.amount)}{b.days ? ` for ${b.days} days` : ''} · {b.paymentLabel}{b.paymentMethod ? ` · ${b.paymentMethod === 'MOMO' ? 'MTN Mobile Money' : 'Airtel Money'}` : ''}</span>
         <span className="bap-actions">
           {b.displaySeconds && <button type="button" className="text-btn" aria-expanded={open} onClick={() => setOpen((v) => !v)}>{open ? 'Hide preview' : 'See how it looks'}</button>}
           {b.status === 'AWAITING_PAYMENT' && <button type="button" className="outline-btn compact-btn" disabled={busy} onClick={() => onCancel(b.id)}>Cancel</button>}

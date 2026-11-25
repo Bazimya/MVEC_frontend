@@ -9,8 +9,8 @@ import { adBookingsApi } from '../API/adBookings';
 // Bought banner ads have booking numbers like ADB-XXXX; other slides are not counted.
 const isBooking = (key) => /^ADB-/.test(String(key || ''));
 
-/** How long an ad without bought time (older bookings, sponsored campaigns) stays in the banner. */
-export const DEFAULT_SLIDE_SECONDS = 5;
+/** How long every ad stays in the banner before the next one. */
+export const SLIDE_SECONDS = 5;
 
 /**
  * One advertisement as the banner shows it: the product's picture, the seller's
@@ -44,12 +44,11 @@ export function HeroSlide({ slide, preview = false, advertiseLink, eager = false
 }
 
 /**
- * The home page banner: paid ads take turns, each for the seconds its seller
- * bought. One timer runs at a time (a fresh one per slide, cleared before the
+ * The home page banner: paid ads take turns, each for SLIDE_SECONDS. One timer runs at a time (a fresh one per slide, cleared before the
  * next starts), it waits while someone hovers or focuses the banner or the tab
  * is hidden, and it starts the slide's full time again afterwards.
  *
- * `slides`: [{ key, product, title, description, seconds }]. Without any, `empty` shows instead.
+ * `slides`: [{ key, product, title, description }]. Without any, `empty` shows instead.
  */
 export default function HeroBanner({ slides, advertiseLink, empty = null }) {
   const count = slides.length;
@@ -62,7 +61,7 @@ export default function HeroBanner({ slides, advertiseLink, empty = null }) {
   // list really changes, not every time the page re-renders.
   const slidesRef = useRef(slides);
   slidesRef.current = slides;
-  const signature = useMemo(() => slides.map((s) => `${s.key}:${s.seconds || ''}`).join('|'), [slides]);
+  const signature = useMemo(() => slides.map((s) => s.key).join('|'), [slides]);
 
   const active = count ? index % count : 0;
 
@@ -78,8 +77,7 @@ export default function HeroBanner({ slides, advertiseLink, empty = null }) {
   // Exactly one pending timer: this effect clears it before arming the next.
   useEffect(() => {
     if (count < 2 || paused || hidden) return undefined;
-    const seconds = slidesRef.current[active]?.seconds || DEFAULT_SLIDE_SECONDS;
-    const timer = setTimeout(() => setIndex((i) => (i + 1) % count), seconds * 1000);
+    const timer = setTimeout(() => setIndex((i) => (i + 1) % count), SLIDE_SECONDS * 1000);
     return () => clearTimeout(timer);
   }, [active, count, paused, hidden, tick, signature]);
 

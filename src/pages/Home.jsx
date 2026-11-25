@@ -96,18 +96,16 @@ export default function Home() {
     return () => { mounted = false; };
   }, []);
 
-  // Each live ad becomes a slide with its own title, description and bought seconds.
-  // The server decides which ads are live and for how long; the page only shows them.
+  // Each live ad becomes a slide with its own title and description; every slide
+  // shows 5 seconds. The server decides which ads are live; the page only shows them.
   const slides = useMemo(() => heroAds.map((ad) => {
     const product = mapBackendProduct(ad.product);
     if (!product?.id) return null;
-    const seconds = Number(ad.displaySeconds);
     return {
       key: ad.id || product.id,
       product,
       title: ad.title || product.name,
       description: ad.description || "",
-      seconds: seconds > 0 ? seconds : null,
     };
   }).filter(Boolean), [heroAds]);
 

@@ -14,18 +14,17 @@ import { extractErrorMessage } from '../API/client';
 import { mapBackendProduct } from '../services/catalogApi';
 import { money } from '../utils/format';
 import { isRwandanPhone } from '../utils/delivery';
-import { amountProblem, priceForSeconds, secondsForAmount } from '../utils/adPricing';
 
 const SELLERS = ['vendor', 'supplier', 'super_admin'];
-const QUICK_SECONDS = [3, 5, 10, 15, 20];
 const PAYMENT_DONE = ['SUCCESS', 'FAILED', 'CANCELLED', 'REFUNDED'];
-const DEFAULT_RULES = { basePrice: 5000, baseSeconds: 3, extraSecondPrice: 1000, maxSeconds: 60, days: 7, titleMax: 60, descriptionMax: 1000 };
+const DEFAULT_RULES = { price: 5000, seconds: 5, days: 7, titleMax: 60, descriptionMax: 1000 };
 
 /**
  * "Advertise here": a seller buys banner time for one product on the home page.
- * Each second costs money (the server's price list decides how much); the seller
- * writes the banner's title and description, sees a preview, picks how to pay,
- * and pays by mobile money. Ikiguzi checks the ad and puts it live, or refunds.
+ * Every ad costs the same flat price and shows for 5 seconds each turn (the
+ * server sets both). The seller writes the banner's title and description, sees
+ * a preview, picks how to pay, and pays by mobile money. The ad goes live once
+ * the payment is confirmed; Ikiguzi can take it down and refund it.
  */
 export default function Advertise() {
   const { user } = useAuth();
@@ -34,7 +33,7 @@ export default function Advertise() {
 
   return <Storefront><main className="account-page">
     <div className="page-title"><span className="eyebrow">ADVERTISE ON IKIGUZI</span><h1>Put your product in the home banner</h1>
-      <p>Pay for the seconds you want. {money(rules.basePrice)} buys {rules.baseSeconds} seconds in the big banner at the top of the home page, and every extra second costs {money(rules.extraSecondPrice)}. Your ad runs for {rules.days} days after Ikiguzi approves it. Pay by mobile money; if Ikiguzi can&apos;t approve the ad, you are refunded in full.</p></div>
+      <p>Your product takes turns in the big banner at the top of the home page: its picture on the right, your title, description and price on the left. One ad costs {money(rules.price)} and runs for {rules.days} days; each ad shows for {rules.seconds} seconds before the next one. Pay by mobile money; if Ikiguzi takes the ad down, you are refunded in full.</p></div>
     {!user && <div className="data-card">
       <h3>Sign in to advertise</h3>
       <p className="tiny">Advertising is for seller and supplier accounts, the accounts that list products.</p>
@@ -48,7 +47,7 @@ export default function Advertise() {
       <p className="tiny">Your account is a {user.role === 'buyer' ? 'buyer' : user.role} account. Open a store to list products, then advertise them here.</p>
       <Link className="gradient-btn" to="/signup" state={{ role: 'vendor' }}>Start selling</Link>
     </div>}
-    {user && SELLERS.includes(user.role) && <Book key={`${rules.basePrice}-${rules.baseSeconds}-${rules.extraSecondPrice}-${rules.maxSeconds}`} rules={rules} />}
+    {user && SELLERS.includes(user.role) && <Book rules={rules} />}
   </main></Storefront>;
 }
 
@@ -68,8 +67,6 @@ function Book({ rules }) {
   const [productId, setProductId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [seconds, setSeconds] = useState(String(rules.baseSeconds));
-  const [amountText, setAmountText] = useState(String(rules.basePrice));
   const [method, setMethod] = useState('');
   const [phone, setPhone] = useState(user.telephone || '');
   const [device, setDevice] = useState('desktop');
@@ -79,24 +76,10 @@ function Book({ rules }) {
   const [placed, setPlaced] = useState(null); // { bookingId, paymentId, message } once the prompt is sent
   useEffect(() => { setPhone((p) => p || user.telephone || ''); }, [user.telephone]);
 
-  const price = priceForSeconds(Number(seconds), rules);
-  const secondsOk = price !== null;
-  const problem = amountProblem(amountText, rules, money) || (!secondsOk && seconds !== '' ? `Choose between ${rules.baseSeconds} and ${rules.maxSeconds} whole seconds.` : '');
+  const price = rules.price;
   const product = products.find((p) => p.id === productId);
   const chosen = methods.find((m) => m.id === method);
   const usable = methods.filter((m) => m.available);
-
-  // Seconds and amount are two ways to say the same thing: change one, the other follows.
-  const pickSeconds = (value) => {
-    setSeconds(value);
-    const p = priceForSeconds(Number(value), rules);
-    setAmountText(p === null ? '' : String(p));
-  };
-  const typeAmount = (value) => {
-    setAmountText(value);
-    const s = secondsForAmount(value, rules);
-    setSeconds(s === null ? '' : String(s));
-  };
 
   const preview = useMemo(() => ({
     product: product ? mapBackendProduct(product) : { id: '', name: 'Choose a product', image: '', price: 0 },
@@ -110,7 +93,6 @@ function Book({ rules }) {
     if (!product) return fail('Choose the product you want to advertise.');
     if (title.trim().length < 3) return fail('Write a title of at least 3 characters.');
     if (description.trim().length < 5) return fail('Write a short description.');
-    if (!secondsOk) return fail(problem || 'Choose how many seconds your ad should run.');
     if (!chosen) return fail('Choose how you want to pay.');
     if (!isRwandanPhone(phone)) return fail('Enter the MTN or Airtel number that pays, for example 0788 123 456.');
     setNotice(null); setStep('review');
@@ -121,8 +103,8 @@ function Book({ rules }) {
     if (busy) return;
     setBusy(true); setNotice(null);
     try {
-      // Only the seconds go to the server; it works out and charges the price itself.
-      const res = await adBookingsApi.book({ productId, title: title.trim(), description: description.trim(), seconds: Number(seconds), paymentMethod: method, phoneNumber: phone.trim() });
+      // No price goes to the server; it charges the flat price itself.
+      const res = await adBookingsApi.book({ productId, title: title.trim(), description: description.trim(), paymentMethod: method, phoneNumber: phone.trim() });
       setPlaced({ bookingId: res.booking.id, paymentId: res.paymentId, message: res.message });
       setStep('paying');
       qc.invalidateQueries({ queryKey: ['ad-bookings', 'mine'] });
@@ -131,7 +113,7 @@ function Book({ rules }) {
 
   const startOver = () => {
     setPlaced(null); setStep('edit'); setNotice(null);
-    setProductId(''); setTitle(''); setDescription(''); pickSeconds(String(rules.baseSeconds));
+    setProductId(''); setTitle(''); setDescription('');
   };
 
   if (step === 'paying' && placed) return <>
@@ -163,26 +145,8 @@ function Book({ rules }) {
         <small className="tiny adv-count">{description.length} / {rules.descriptionMax}</small>
       </label>
 
-      <h3>3. How long should it show?</h3>
-      <p className="tiny">This is the time your ad stays in the banner each time it comes round. {money(rules.basePrice)} buys {rules.baseSeconds} seconds, then {money(rules.extraSecondPrice)} for every extra second.</p>
-      <div className="adv-chips" role="group" aria-label="Quick choices">
-        {QUICK_SECONDS.filter((s) => s >= rules.baseSeconds && s <= rules.maxSeconds).map((s) => (
-          <button type="button" key={s} className={'adv-chip' + (Number(seconds) === s ? ' on' : '')} aria-pressed={Number(seconds) === s} onClick={() => pickSeconds(String(s))}>
-            <b>{s} seconds</b><small>{money(priceForSeconds(s, rules))}</small>
-          </button>
-        ))}
-      </div>
-      <div className="two-col">
-        <label className="field"><span>Seconds</span>
-          <input type="number" inputMode="numeric" min={rules.baseSeconds} max={rules.maxSeconds} step="1" value={seconds} onChange={(e) => pickSeconds(e.target.value)} />
-        </label>
-        <label className="field"><span>Or the amount to spend (RWF)</span>
-          <input type="text" inputMode="numeric" value={amountText} onChange={(e) => typeAmount(e.target.value.replace(/[^\d]/g, ''))} />
-        </label>
-      </div>
-      {problem
-        ? <div className="form-alert error" role="alert">{problem}</div>
-        : <p className="adv-total" aria-live="polite">{secondsOk ? <>{seconds} seconds = <b>{money(price)}</b></> : 'Choose the seconds or the amount.'}</p>}
+      <h3>3. Price</h3>
+      <p className="adv-total" aria-live="polite">One ad = <b>{money(price)}</b> for {rules.days} days. It shows for {rules.seconds} seconds each time the banner comes round to it, the same as every other ad.</p>
 
       <h3>4. Preview</h3>
       <div className="adv-preview-bar" role="group" aria-label="Preview size">
@@ -212,18 +176,18 @@ function Book({ rules }) {
       </label>
 
       {notice && <div className={`form-alert ${notice.ok ? 'success' : 'error'}`} role="alert">{notice.text}</div>}
-      {step === 'edit' && <button type="submit" className="gradient-btn" disabled={!usable.length}>Review and pay{secondsOk ? ` ${money(price)}` : ''}</button>}
+      {step === 'edit' && <button type="submit" className="gradient-btn" disabled={!usable.length}>Review and pay {money(price)}</button>}
 
       {step === 'review' && chosen && <div className="adv-review" role="region" aria-label="Check your order">
         <h3>Check before you pay</h3>
         <dl>
           <dt>Product</dt><dd>{product?.name}</dd>
           <dt>Banner title</dt><dd>{title.trim()}</dd>
-          <dt>Time in the banner</dt><dd>{seconds} seconds, for {rules.days} days once approved</dd>
+          <dt>Time in the banner</dt><dd>{rules.seconds} seconds each turn, for {rules.days} days</dd>
           <dt>Pay with</dt><dd>{chosen.label} · {phone.trim()}</dd>
           <dt>Total</dt><dd><b>{money(price)}</b></dd>
         </dl>
-        <p className="tiny">You will get a prompt on your phone. Your ad is booked only after the payment is confirmed, and goes live after Ikiguzi approves it.</p>
+        <p className="tiny">You will get a prompt on your phone. Your ad goes live in the home banner as soon as the payment is confirmed.</p>
         <div className="row-actions">
           <button type="button" className="gradient-btn" disabled={busy} onClick={pay}>{busy ? 'Sending the payment prompt…' : `Confirm and pay ${money(price)}`}</button>
           <button type="button" className="outline-btn" disabled={busy} onClick={() => setStep('edit')}>Change something</button>
