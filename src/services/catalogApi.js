@@ -32,6 +32,7 @@ export function mapBackendProduct(p) {
     id: p._id || p.id || p.publicId,
     publicId: p.publicId || "",
     name: p.name || '',
+    shortDescription: p.shortDescription || '',
     category: category.name || (typeof p.category === 'string' ? p.category : 'Uncategorized'),
     brand: p.brand || '',
     vendor: vendor.companyName || vendor.Fullname || vendor.fullName || 'Ikiguzi Seller',

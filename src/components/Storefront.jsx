@@ -73,7 +73,6 @@ export default function Storefront({ children }) {
   const dashboard = DASHBOARD_BY_ROLE[user?.role];
   const notificationPath = NOTIFICATIONS_BY_ROLE[user?.role] || '/buyer/notifications';
   const accountPath = dashboard || '/profile';
-  const sellerHome = ['vendor', 'supplier', 'super_admin'].includes(user?.role) ? dashboard : null; // where a seller's own pages live
   const links = [['/', t('home')], ['/shop', t('shop')], ['/deals', t('deals')], ['/vendors', t('vendors')], ['/buyer/recommendations', t('forYou')]];
   const activeCategory = location.pathname === '/shop' ? new URLSearchParams(location.search).get('category') || '' : '';
   const isActive = (to) => (to.includes('?') ? `${location.pathname}${location.search}` === to : location.pathname === to && !location.search.includes('deal='));
@@ -138,47 +137,29 @@ export default function Storefront({ children }) {
     {cartNotice && <div className="form-alert error site-notice" role="alert">{cartNotice} <button type="button" className="text-btn" onClick={dismissCartNotice}>Dismiss</button></div>}
     <div className="site-page">{children}</div>
     <footer className="site-footer">
-      <ul className="site-promises">
-        <li><Icon name="truck" /><span><b>Delivered to you</b><small>Riders across Rwanda</small></span></li>
-        <li><Icon name="shield" /><span><b>Secure payment</b><small>Held until delivery</small></span></li>
-        <li><Icon name="phone" /><span><b>Mobile money</b><small>MTN and Airtel</small></span></li>
-        <li><Icon name="support" /><span><b>Help when you need it</b><small><Link to="/buyer/support">Contact support</Link></small></span></li>
-      </ul>
       <div className="site-footer-main">
         <div className="site-footer-grid">
           <section className="site-footer-about" id="site-about" aria-labelledby="footer-about">
             <Link to="/" className="site-logo">Ikiguzi</Link>
-            <h3 id="footer-about">About Ikiguzi</h3>
-            <p>Ikiguzi is Rwanda&apos;s marketplace. Buyers pay with mobile money, and we hold the payment safely until the order arrives, so the seller is paid only after delivery.</p>
-            <p><b>Our mission:</b> to make buying and selling in Rwanda simple, safe and local, with trusted sellers and riders who bring your order to your door.</p>
+            <h3 id="footer-about">Rwanda&apos;s marketplace</h3>
+            <p>Discover trusted local products and sellers.</p>
           </section>
-          <nav aria-label="Customer service">
-            <h3>Customer Service</h3>
-            <Link to="/buyer/support">Contact Us</Link>
-            <Link to="/buyer/support">Help Center &amp; FAQs</Link>
-            <Link to="/orders">Order Tracking</Link>
-            <Link to="/account/returns">Returns &amp; Refunds</Link>
-          </nav>
-          <nav aria-label="For sellers">
-            <h3>For Sellers</h3>
-            {!sellerHome && <Link to="/signup" state={{ role: 'vendor' }}>Become a Seller</Link>}
-            <Link to={sellerHome || '/vendor'}>Seller Dashboard</Link>
-            <Link to="/advertise">Advertise Your Products</Link>
-            <Link to={sellerHome && sellerHome !== '/admin' ? `${sellerHome}/support` : '/vendor/support'}>Seller Support</Link>
-          </nav>
-          <nav aria-label="Quick links">
-            <h3>Quick Links</h3>
-            <Link to="/">Home</Link>
-            <Link to="/shop" title="Filter the shop by category">Categories</Link>
-            <Link to="/shop">All Products</Link>
+          <nav aria-label="Shop">
+            <h3>Shop</h3>
+            <Link to="/shop">All products</Link>
             <Link to="/deals">Deals</Link>
             <Link to="/vendors">Stores</Link>
-            <a href="#site-about">About Us</a>
+          </nav>
+          <nav aria-label="Help and orders">
+            <h3>Help</h3>
+            <Link to="/buyer/support">Customer support</Link>
+            <Link to="/orders">Track an order</Link>
+            <Link to="/account/returns">Returns</Link>
           </nav>
         </div>
         <div className="site-footer-bottom">
           <small>© {new Date().getFullYear()} Ikiguzi. All rights reserved.</small>
-          <small className="site-footer-pay">Pay with MTN Mobile Money or Airtel Money</small>
+          <small className="site-footer-pay">MTN Mobile Money and Airtel Money</small>
           {user && <button type="button" className="link-btn" onClick={() => { logout(); navigate('/'); }}>Sign out</button>}
         </div>
       </div>

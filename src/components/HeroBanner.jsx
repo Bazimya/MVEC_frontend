@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import Icon from './Icon';
 import ProductImage from './ProductImage';
 import { money } from '../utils/format';
 import { buyNowLink } from '../utils/shopping';
+import { resolveImageUrl } from '../utils/imageUrl';
 import { adBookingsApi } from '../API/adBookings';
 
 // Bought banner ads have booking numbers like ADB-XXXX; other slides are not counted.
 const isBooking = (key) => /^ADB-/.test(String(key || ''));
 
-/** How long every ad stays in the banner before the next one. */
-export const SLIDE_SECONDS = 5;
+/** How long each product position stays in view before the carousel advances. */
+export const SLIDE_SECONDS = 3;
 
 /**
  * One advertisement as the banner shows it: the product's picture, the seller's
@@ -43,27 +43,46 @@ export function HeroSlide({ slide, preview = false, advertiseLink, eager = false
   );
 }
 
-/**
- * The home page banner: paid ads take turns, each for SLIDE_SECONDS. One timer runs at a time (a fresh one per slide, cleared before the
- * next starts), it waits while someone hovers or focuses the banner or the tab
- * is hidden, and it starts the slide's full time again afterwards.
- *
- * `slides`: [{ key, product, title, description }]. Without any, `empty` shows instead.
- */
-export default function HeroBanner({ slides, advertiseLink, empty = null }) {
+function ProductBanner({ slide, eager = false, onOpen, tabIndex = 0 }) {
+  const { product } = slide;
+  const description = String(slide.description || product.category || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const shortDescription = description.length > 72 ? `${description.slice(0, 69).trimEnd()}…` : description;
+
+  return (
+    <Link
+      to={`/product/${product.id}`}
+      className="hb-product"
+      onClick={onOpen}
+      tabIndex={tabIndex}
+      aria-label={`View ${product.name}${shortDescription ? `, ${shortDescription}` : ''}`}
+    >
+      <ProductImage src={product.image} alt={product.name} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+      <span className="hb-product-copy">
+        <b>{product.name}</b>
+        {shortDescription && <small>{shortDescription}</small>}
+      </span>
+    </Link>
+  );
+}
+
+export default function HeroBanner({ slides, empty = null }) {
   const count = slides.length;
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
-  const [tick, setTick] = useState(0); // a manual move restarts the clock even on the same slide
-
-  // The timer reads the current list through a ref and re-arms only when the
-  // list really changes, not every time the page re-renders.
-  const slidesRef = useRef(slides);
-  slidesRef.current = slides;
-  const signature = useMemo(() => slides.map((s) => s.key).join('|'), [slides]);
-
-  const active = count ? index % count : 0;
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(3);
+  const [offset, setOffset] = useState(0);
+  const [resetting, setResetting] = useState(false);
+  const trackRef = useRef(null);
+  const previousVisibleKeys = useRef(new Set());
+  const signature = slides.map((slide) => slide.key).join('|');
+  const nextImage = count > 1 ? slides[(index + visibleCount) % count]?.product?.image : null;
+  const renderedSlides = count > 1
+    ? [...slides, ...Array.from({ length: visibleCount }, (_, i) => slides[i % count])]
+    : slides;
 
   useEffect(() => {
     const onVisibility = () => setHidden(document.hidden);
@@ -71,62 +90,128 @@ export default function HeroBanner({ slides, advertiseLink, empty = null }) {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []);
 
-  // Back to the first ad when the set of ads changes.
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updatePreference = () => setReducedMotion(preference.matches);
+    updatePreference();
+    preference.addEventListener('change', updatePreference);
+    return () => preference.removeEventListener('change', updatePreference);
+  }, []);
+
+  useEffect(() => {
+    const updateVisibleCount = () => {
+      setVisibleCount(window.matchMedia('(max-width: 640px)').matches
+        ? 1
+        : window.matchMedia('(max-width: 900px)').matches ? 2 : 3);
+    };
+    updateVisibleCount();
+    window.addEventListener('resize', updateVisibleCount);
+    return () => window.removeEventListener('resize', updateVisibleCount);
+  }, []);
+
   useEffect(() => { setIndex(0); }, [signature]);
 
-  // Exactly one pending timer: this effect clears it before arming the next.
   useEffect(() => {
-    if (count < 2 || paused || hidden) return undefined;
-    const timer = setTimeout(() => setIndex((i) => (i + 1) % count), SLIDE_SECONDS * 1000);
+    if (count < 2 || paused || hidden || reducedMotion) return undefined;
+    const timer = setTimeout(() => setIndex((current) => current + 1), SLIDE_SECONDS * 1000);
     return () => clearTimeout(timer);
-  }, [active, count, paused, hidden, tick, signature]);
+  }, [index, count, paused, hidden, reducedMotion, signature]);
 
-  // Fetch the next picture while this one shows, so the change doesn't flash.
   useEffect(() => {
-    if (count < 2) return;
-    const next = slidesRef.current[(active + 1) % count]?.product?.image;
-    if (next) new Image().src = next;
-  }, [active, count, signature]);
+    if (nextImage) new Image().src = resolveImageUrl(nextImage);
+  }, [nextImage]);
 
-  // Tell the server this ad is on screen (only while the tab is visible), for the seller's usage numbers.
-  const shownKey = count ? slides[active]?.key : null;
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    if (!track) return undefined;
+    const updateOffset = () => {
+      const current = track.children[index];
+      if (current) setOffset(current.offsetLeft);
+    };
+    updateOffset();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateOffset);
+    if (observer) {
+      observer.observe(track);
+      Array.from(track.children).forEach((item) => observer.observe(item));
+    } else {
+      window.addEventListener('resize', updateOffset);
+    }
+    const frame = resetting ? requestAnimationFrame(() => setResetting(false)) : null;
+    return () => {
+      observer?.disconnect();
+      if (!observer) window.removeEventListener('resize', updateOffset);
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [index, renderedSlides.length, resetting, visibleCount]);
+
   useEffect(() => {
-    if (hidden || !isBooking(shownKey)) return;
-    adBookingsApi.track(shownKey, 'view');
-  }, [shownKey, hidden]);
+    const track = trackRef.current;
+    if (!track) return;
+    if (hidden) {
+      previousVisibleKeys.current = new Set();
+      return;
+    }
+    const left = offset;
+    const right = left + track.clientWidth;
+    const visibleKeys = new Set(
+      Array.from(track.children)
+        .filter((item) => item.offsetLeft < right && item.offsetLeft + item.offsetWidth > left)
+        .map((item) => item.dataset.key)
+        .filter(isBooking),
+    );
+    visibleKeys.forEach((key) => {
+      if (!previousVisibleKeys.current.has(key)) adBookingsApi.track(key, 'view');
+    });
+    previousVisibleKeys.current = visibleKeys;
+  }, [index, offset, hidden, signature, visibleCount]);
 
   if (!count) return empty;
-  const go = (i) => { setIndex(((i % count) + count) % count); setTick((t) => t + 1); };
-  const current = slides[active];
-  const pointer = (on) => (e) => { if (e.pointerType === 'mouse') setPaused(on); }; // touch "hover" would stick
+  const onTransitionEnd = (event) => {
+    if (event.target !== trackRef.current || event.propertyName !== 'transform' || index < count) return;
+    setResetting(true);
+    setIndex(0);
+  };
+  const pointer = (on) => (event) => { if (event.pointerType === 'mouse') setPaused(on); };
 
   return (
-    <section className="hb" aria-roledescription="carousel" aria-label="Featured products">
-      <h1 className="hb-sr">Ikiguzi, Rwanda&apos;s marketplace</h1>
+    <section className="hb-carousel" aria-roledescription="carousel" aria-label="Featured products">
+      <h1 className="hb-sr">Shop popular products on Ikiguzi</h1>
       <div
-        className="hb-frame"
+        className="hb-viewport"
         onPointerEnter={pointer(true)}
         onPointerLeave={pointer(false)}
         onFocus={() => setPaused(true)}
-        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false); }}
+        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false); }}
       >
-        <div key={current.key} role="group" aria-roledescription="slide" aria-label={`${active + 1} of ${count}`} className="hb-fade">
-          <HeroSlide slide={current} advertiseLink={advertiseLink} eager={active === 0} onOpen={isBooking(current.key) ? () => adBookingsApi.track(current.key, 'click') : undefined} />
+        <div
+          ref={trackRef}
+          className={`hb-track${resetting ? ' is-resetting' : ''}`}
+          style={{ transform: `translate3d(-${offset}px, 0, 0)` }}
+          onTransitionEnd={onTransitionEnd}
+        >
+          {renderedSlides.map((slide, position) => {
+            const visible = position >= index && position < index + visibleCount;
+            return (
+              <div
+                key={`${slide.key}-${position >= count ? 'loop' : 'item'}`}
+                className="hb-track-item"
+                data-key={slide.key}
+                role="group"
+                aria-roledescription="slide"
+                aria-label={`${(position % count) + 1} of ${count}`}
+                aria-hidden={!visible}
+              >
+                <ProductBanner
+                  slide={slide}
+                  eager={position < visibleCount}
+                  tabIndex={visible ? 0 : -1}
+                  onOpen={isBooking(slide.key) ? () => adBookingsApi.track(slide.key, 'click') : undefined}
+                />
+              </div>
+            );
+          })}
         </div>
-        {count > 1 && (
-          <>
-            <button type="button" className="hb-arrow prev" onClick={() => go(active - 1)} aria-label="Previous ad"><Icon name="left" size={18} /></button>
-            <button type="button" className="hb-arrow next" onClick={() => go(active + 1)} aria-label="Next ad"><Icon name="right" size={18} /></button>
-          </>
-        )}
       </div>
-      {count > 1 && (
-        <div className="hb-dots" role="group" aria-label="Choose an ad">
-          {slides.map((s, i) => (
-            <button type="button" key={s.key} className={i === active ? 'on' : ''} aria-label={`Show ad ${i + 1} of ${count}: ${s.title}`} aria-current={i === active ? 'true' : undefined} onClick={() => go(i)} />
-          ))}
-        </div>
-      )}
     </section>
   );
 }
