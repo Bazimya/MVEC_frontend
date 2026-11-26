@@ -77,6 +77,7 @@ export default function ProductDetails() {
   const maxQty = Math.max(1, Math.min(stock, 100));
   const wished = isWishlisted(p.id);
   const images = [...new Set([p.image, ...(p.gallery || [])].filter(Boolean))];
+  const shownImage = images.includes(activeImage) ? activeImage : p.image; // a stale choice from another product falls back to its own main image
   const onSale = line.oldPrice > line.price;
 
   const changeQty = (next) => setQty(Math.max(1, Math.min(maxQty, next)));
@@ -100,11 +101,13 @@ export default function ProductDetails() {
     <nav className="breadcrumbs" aria-label="Breadcrumb"><Link to="/">Home</Link> / <Link to="/shop">Shop</Link> / {p.category && <><Link to={`/shop?category=${encodeURIComponent(p.category)}`}>{p.category}</Link> / </>}{p.name}</nav>
     <section className="detail-card">
       <div className="detail-gallery">
-        <ProductImage src={activeImage || p.image} alt={p.name} />
+        <div className="detail-stage">
+          <ProductImage src={shownImage} alt={p.name} />
+        </div>
         {images.length > 1 && (
-          <div className="gallery-thumbs">
-            {images.map((src) => (
-              <button type="button" key={src} className={src === activeImage ? 'active' : ''} onClick={() => setActiveImage(src)} aria-label="Show image">
+          <div className="gallery-thumbs" role="group" aria-label="Product images">
+            {images.map((src, i) => (
+              <button type="button" key={src} className={src === shownImage ? 'active' : ''} aria-pressed={src === shownImage} onClick={() => setActiveImage(src)} aria-label={`Show image ${i + 1} of ${images.length}`}>
                 <ProductImage src={src} alt="" />
               </button>
             ))}
