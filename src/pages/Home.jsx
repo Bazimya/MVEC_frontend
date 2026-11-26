@@ -51,17 +51,26 @@ export default function Home() {
     });
   }, []);
 
-  // Live product placements lead the carousel; the rest of the catalog fills it.
+  // The carousel shows live advertisements only (paid banner bookings and approved campaigns);
+  // nothing is filled in from the catalog. An ad that is paused, ended, deleted or off sale is not returned.
   const [heroAds, setHeroAds] = useState([]);
   const [featuredAds, setFeaturedAds] = useState([]);
+  const [adsLoading, setAdsLoading] = useState(true);
   useEffect(() => {
     let mounted = true;
-    advertisementsApi.getLive("HOMEPAGE_HERO", 12).then((ads) => mounted && setHeroAds(ads)).catch(() => {});
-    advertisementsApi.getLive("FEATURED", 12).then((ads) => mounted && setFeaturedAds(ads)).catch(() => {});
+    Promise.all([
+      advertisementsApi.getLive("HOMEPAGE_HERO", 12).catch(() => []),
+      advertisementsApi.getLive("FEATURED", 12).catch(() => []),
+    ]).then(([hero, featured]) => {
+      if (!mounted) return;
+      setHeroAds(hero);
+      setFeaturedAds(featured);
+      setAdsLoading(false);
+    });
     return () => { mounted = false; };
   }, []);
 
-  // Sponsored products retain their booking IDs for view/click tracking.
+  // Booked ads keep their booking id (for view and click counts) and the seller's own title and description.
   const slides = useMemo(() => {
     const unique = new Map();
     [...heroAds, ...featuredAds].forEach((ad) => {
@@ -71,19 +80,12 @@ export default function Home() {
       unique.set(String(product.id), {
         key: ad.id || String(product.id),
         product,
+        title: ad.title || "",
         description: ad.description || product.shortDescription || product.description || product.category,
       });
     });
-    catalog.products.forEach((product) => {
-      if (unique.size >= 12 || unique.has(String(product.id))) return;
-      unique.set(String(product.id), {
-        key: `product-${product.id}`,
-        product,
-        description: product.shortDescription || product.description || product.category,
-      });
-    });
     return [...unique.values()];
-  }, [heroAds, featuredAds, catalog.products]);
+  }, [heroAds, featuredAds]);
 
   useEffect(() => {
     let mounted = true;
@@ -104,12 +106,7 @@ export default function Home() {
   return (
     <Storefront>
       <main className={`home enter-${entrance.turn % 2}`}>
-        <HeroBanner
-          slides={slides}
-          empty={loading
-            ? <div className="hb-skeleton" aria-hidden="true">{Array.from({ length: 3 }, (_, i) => <span key={i} />)}</div>
-            : <div className="hb-empty"><h1>Find something you&apos;ll love</h1><Link to="/shop">Browse products</Link></div>}
-        />
+        <HeroBanner slides={slides} loading={adsLoading} />
 
         {status === "error" && (
           <div className="form-alert error" role="alert">

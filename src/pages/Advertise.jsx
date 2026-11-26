@@ -3,13 +3,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Storefront from '../components/Storefront';
 import ProductImage from '../components/ProductImage';
-import { HeroSlide } from '../components/HeroBanner';
+import { AdCardPreview } from '../components/HeroBanner';
 import BannerAdsPanel from '../components/BannerAdsPanel';
 import { useAuth } from '../context/AuthContext';
 import { adBookingsApi } from '../API/adBookings';
 import { paymentsApi } from '../API/payments';
-import { productsApi } from '../API/products';
-import { suppliersApi } from '../API/suppliers';
+import { useAdProducts } from '../lib/useAdProducts';
 import { extractErrorMessage } from '../API/client';
 import { mapBackendProduct } from '../services/catalogApi';
 import { money } from '../utils/format';
@@ -33,7 +32,7 @@ export default function Advertise() {
 
   return <Storefront><main className="account-page">
     <div className="page-title"><span className="eyebrow">ADVERTISE ON IKIGUZI</span><h1>Put your product in the home banner</h1>
-      <p>Your product takes turns in the big banner at the top of the home page: its picture on the right, your title, description and price on the left. One ad costs {money(rules.price)} and runs for {rules.days} days; each ad shows for {rules.seconds} seconds before the next one. Pay by mobile money; if Ikiguzi takes the ad down, you are refunded in full.</p></div>
+      <p>Your product takes turns in the Sponsored products showcase at the top of the home page, as a card with its picture, your title, your description and its price. One ad costs {money(rules.price)} and runs for {rules.days} days; each ad shows for {rules.seconds} seconds before the next one. Pay by mobile money; if Ikiguzi takes the ad down, you are refunded in full.</p></div>
     {!user && <div className="data-card">
       <h3>Sign in to advertise</h3>
       <p className="tiny">Advertising is for seller and supplier accounts, the accounts that list products.</p>
@@ -54,14 +53,7 @@ export default function Advertise() {
 function Book({ rules }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { data: products = [] } = useQuery({
-    queryKey: ['ad-products', user.id],
-    // Suppliers advertise the marketplace listings of their wholesale products.
-    queryFn: () => (user.role === 'supplier'
-      ? suppliersApi.getMyProducts().then((r) => (r.products || []).map((w) => w.retailProduct).filter((p) => p && typeof p === 'object').map((p) => ({ ...p, id: p.id || p._id })))
-      : productsApi.getVendorProducts().then((r) => r.products || []))
-      .then((list) => list.filter((p) => p.status === 'ACTIVE' && p.stockQuantity > 0)),
-  });
+  const { data: products = [] } = useAdProducts(user);
   const { data: methods = [], isPending: methodsLoading, error: methodsError } = useQuery({ queryKey: ['ad-payment-methods'], queryFn: adBookingsApi.paymentMethods });
 
   const [productId, setProductId] = useState('');
@@ -69,7 +61,6 @@ function Book({ rules }) {
   const [description, setDescription] = useState('');
   const [method, setMethod] = useState('');
   const [phone, setPhone] = useState(user.telephone || '');
-  const [device, setDevice] = useState('desktop');
   const [step, setStep] = useState('edit'); // edit → review → paying
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
@@ -149,15 +140,8 @@ function Book({ rules }) {
       <p className="adv-total" aria-live="polite">One ad = <b>{money(price)}</b> for {rules.days} days. It shows for {rules.seconds} seconds each time the banner comes round to it, the same as every other ad.</p>
 
       <h3>4. Preview</h3>
-      <div className="adv-preview-bar" role="group" aria-label="Preview size">
-        {[['desktop', 'Computer'], ['phone', 'Phone']].map(([key, label]) => (
-          <button type="button" key={key} className={device === key ? 'on' : ''} aria-pressed={device === key} onClick={() => setDevice(key)}>{label}</button>
-        ))}
-      </div>
-      <div className={'adv-preview ' + device}>
-        <div className="hb-frame"><HeroSlide slide={preview} preview /></div>
-      </div>
-      <p className="tiny">This is how your ad looks on the home page. The buttons take shoppers to this product.</p>
+      <AdCardPreview slide={preview} />
+      <p className="tiny">This is how your ad looks in the home page showcase. Shoppers who press it open this product.</p>
 
       <h3>5. Pay</h3>
       <div className="adv-methods" role="radiogroup" aria-label="Payment method">
